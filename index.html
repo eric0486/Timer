@@ -368,6 +368,7 @@ const I18N = {
     statusCloudIssueSuffix: 'used browser fallback',
     statusVoiceComplete: 'Voice test complete',
     statusVoiceCompleteVia: 'Voice test complete via',
+    statusVoiceUnsupported: 'This mobile browser does not support local voice output. Use Cloud mode or a different browser.',
     alertDurationInvalid: 'Set a duration greater than 0.',
     labelDuration: 'Duration',
     labelPresets: 'Quick set',
@@ -402,7 +403,8 @@ const I18N = {
     btnStop: 'STOP',
     footerHtml: '<strong>Use in Discord:</strong> Set Windows playback device to <em>CABLE Input (VB-Audio Virtual Cable)</em>, then select <em>CABLE Output</em> as your Discord mic input.<br/>Get VB-Cable free at <a href="https://vb-audio.com/Cable/" target="_blank">vb-audio.com/Cable</a>',
     ttsLocal: 'Local mode: use installed English voices',
-    ttsCloud: 'Cloud mode: Google TTS (English, internet required)'
+    ttsCloud: 'Cloud mode: Google TTS (English, internet required)',
+    ttsLocalUnsupported: 'Local mode is unavailable in this browser'
   },
   zh: {
     pageTitle: 'Discord 倒计时器',
@@ -418,6 +420,7 @@ const I18N = {
     statusCloudIssueSuffix: '已改用浏览器本地语音',
     statusVoiceComplete: '语音测试完成',
     statusVoiceCompleteVia: '语音测试完成，服务',
+    statusVoiceUnsupported: '此手机浏览器不支持本地语音，请使用云模式或更换浏览器。',
     alertDurationInvalid: '请设置大于 0 的倒计时。',
     labelDuration: '时长',
     labelPresets: '快速设置',
@@ -452,7 +455,8 @@ const I18N = {
     btnStop: '停止',
     footerHtml: '<strong>在 Discord 中使用：</strong> 先把 Windows 播放设备设为 <em>CABLE Input (VB-Audio Virtual Cable)</em>，再把 Discord 麦克风输入设为 <em>CABLE Output</em>。<br/>VB-Cable 下载地址：<a href="https://vb-audio.com/Cable/" target="_blank">vb-audio.com/Cable</a>',
     ttsLocal: '本地模式：使用已安装的中文语音',
-    ttsCloud: '云模式：Google TTS（中文，需要联网）'
+    ttsCloud: '云模式：Google TTS（中文，需要联网）',
+    ttsLocalUnsupported: '此浏览器不支持本地语音模式'
   }
 };
 
@@ -518,16 +522,29 @@ let browserVoiceReady = false;
 let lastTtsError = '';
 let lastCloudProvider = '';
 
-const browserSynth = window.speechSynthesis;
+const browserSynth = window.speechSynthesis || null;
 
 function initBrowserVoices() {
+  if (!browserSynth || typeof browserSynth.getVoices !== 'function') {
+    browserVoiceReady = false;
+    return;
+  }
   browserVoiceReady = (browserSynth.getVoices() || []).length > 0;
 }
-browserSynth.onvoiceschanged = initBrowserVoices;
+if (browserSynth) browserSynth.onvoiceschanged = initBrowserVoices;
 initBrowserVoices();
 
 function populateLocalVoices() {
   const sel = document.getElementById('voice-select');
+  if (!browserSynth || typeof browserSynth.getVoices !== 'function') {
+    sel.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = tr('voiceMissing');
+    sel.appendChild(opt);
+    sel._voiceList = [];
+    return;
+  }
   const voices = browserSynth.getVoices() || [];
   const spokenLang = getSpokenLang();
   const langMatcher = spokenLang === 'zh' ? /^(zh|cmn|yue)/i : /^en/i;
@@ -554,10 +571,12 @@ function populateLocalVoices() {
 
   sel._voiceList = list;
 }
-browserSynth.onvoiceschanged = () => {
-  initBrowserVoices();
-  populateLocalVoices();
-};
+if (browserSynth) {
+  browserSynth.onvoiceschanged = () => {
+    initBrowserVoices();
+    populateLocalVoices();
+  };
+}
 populateLocalVoices();
 
 async function unlockAudio() {
@@ -637,6 +656,10 @@ function speak(text) {
     const key = cacheKey(text);
     const fallbackSpeak = () => {
       try {
+        if (!browserSynth || typeof SpeechSynthesisUtterance === 'undefined') {
+          resolve();
+          return;
+        }
         const utt = new SpeechSynthesisUtterance(text);
         const spokenLang = getSpokenLang();
         const targetLang = spokenLang === 'zh' ? 'zh-CN' : 'en-US';
@@ -820,9 +843,13 @@ function updateTtsNote() {
   const sel = document.getElementById('voice-select');
   const isLocal = mode === 'local';
   sel.style.display = isLocal ? 'block' : 'none';
-  document.getElementById('tts-note').textContent = isLocal
-    ? tr('ttsLocal')
-    : tr('ttsCloud');
+  if (isLocal && !browserSynth) {
+    document.getElementById('tts-note').textContent = tr('ttsLocalUnsupported');
+  } else {
+    document.getElementById('tts-note').textContent = isLocal
+      ? tr('ttsLocal')
+      : tr('ttsCloud');
+  }
   audioCache.clear();
 }
 document.getElementById('tts-engine').addEventListener('change', updateTtsNote);
@@ -928,6 +955,11 @@ btnStart.addEventListener('click', async () => {
 });
 
 btnTest.addEventListener('click', async () => {
+  if (document.getElementById('tts-engine').value === 'local' && !browserSynth) {
+    currentStatusKey = '';
+    setStatus(tr('statusVoiceUnsupported'));
+    return;
+  }
   const unlocked = await unlockAudio();
   if (!unlocked) {
     currentStatusKey = '';
@@ -968,7 +1000,9 @@ btnStop.addEventListener('click', () => {
   countdownToken += 1;
   running = false;
   paused  = false;
-  browserSynth.cancel();
+  if (browserSynth && typeof browserSynth.cancel === 'function') {
+    browserSynth.cancel();
+  }
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
   if (pauseResolve) pauseResolve();
   stopFlash();
