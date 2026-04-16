@@ -960,6 +960,7 @@ let remaining = 0;
 let pauseResolve = null;
 let activeMode = 'normal';
 let kvkTenSecondAlertPlayed = false;
+const MAX_TICK_DRIFT_MS = 1500;
 
 // Per-rally speech plans populated when START is pressed in KvK mode.
 // Each entry: { name, sendIn, isSoonest, tenPlayed, sendPlayed }
@@ -1484,12 +1485,13 @@ async function countdown() {
     if (textToSpeak !== null) {
       if (activeMode !== 'kvk') primeUpcoming(count, interval, final);
       // Do not await speech; keeping ticks real-time is more important than full clip playback.
+      // speak() already cancels any active playback before starting the new phrase.
       speak(textToSpeak);
     }
     if (token !== countdownToken) return;
     const now = performance.now();
     // If delayed by more than ~1.5s (e.g., background tab throttling), reset the schedule.
-    if (now - nextTickAt > 1500) nextTickAt = now;
+    if (now - nextTickAt > MAX_TICK_DRIFT_MS) nextTickAt = now;
     nextTickAt += 1000;
     await new Promise(res => setTimeout(res, Math.max(0, nextTickAt - performance.now())));
   }
