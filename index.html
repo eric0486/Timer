@@ -124,7 +124,7 @@
     }
     .kvk-rally-row {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr 1fr auto auto;
       gap: 8px;
       align-items: center;
     }
@@ -144,6 +144,30 @@
       padding: 4px 2px;
     }
     .kvk-rally-cell span { color: var(--gray); font-size: .8rem; }
+    .kvk-rally-name {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .kvk-rally-name input[type=text] {
+      width: 140px;
+      background: var(--bg);
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: var(--fg);
+      font-size: .9rem;
+      padding: 4px 6px;
+    }
+    .kvk-rally-start {
+      border: 1px solid #3b82f6;
+      background: #1d4ed8;
+      color: #e5e7eb;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: .78rem;
+      cursor: pointer;
+    }
+    .kvk-rally-start:hover { border-color: #60a5fa; }
     .kvk-rally-remove {
       border: 1px solid #555;
       background: #3b1f1f;
@@ -154,6 +178,26 @@
       cursor: pointer;
     }
     .kvk-rally-remove:hover { border-color: var(--red); }
+    .kvk-rally-info {
+      grid-column: 1 / -1;
+      color: #9ca3af;
+      font-size: .76rem;
+      padding-left: 2px;
+    }
+    .kvk-queue-output {
+      color: #cbd5e1;
+      font-size: .78rem;
+      line-height: 1.4;
+      border-top: 1px solid #374151;
+      padding-top: 8px;
+    }
+    #btn-add-rally {
+      background: var(--fg);
+      color: var(--bg);
+      border: 1px solid var(--gray);
+      padding: 7px 12px;
+      font-size: .85rem;
+    }
     .kvk-hint { font-size: .75rem; color: var(--gray); }
 
     .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -337,6 +381,7 @@
       <div>
         <button type="button" id="btn-add-rally">+ Add Rally</button>
       </div>
+      <div id="kvk-queue-output" class="kvk-queue-output" role="status" aria-live="assertive"></div>
       <div class="kvk-hint" id="kvk-help">
         Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.
       </div>
@@ -470,9 +515,17 @@ const I18N = {
     unitShortM: 'm',
     unitShortS: 's',
     btnAddRally: '+ Add Rally',
+    btnStartRally: 'Start Timer',
     btnRemoveRally: 'Remove',
     kvkEnemyMarch: 'Enemy march',
     kvkRallyLeft: 'Rally left',
+    kvkPlayerName: 'Player',
+    kvkPlayerDefaultPrefix: 'Player',
+    kvkRallyInfoReady: 'Ready',
+    kvkRallyInfoLandsIn: 'Lands in',
+    kvkRallyInfoSendIn: 'Send in',
+    kvkQueueEmpty: 'Queue is empty.',
+    kvkQueuePrefix: 'Queue',
     kvkHelp: 'Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.',
     kvkStatusSelectedPrefix: 'KvK tracking rally',
     kvkStatusSelectedLandsIn: 'lands in',
@@ -480,12 +533,15 @@ const I18N = {
     kvkAlertNoRallies: 'Add at least one rally with enemy march and rally time left.',
     kvkTenSecondAlert: 'Send march in ten seconds',
     kvkSendNow: 'Send your march now!',
+    kvkSecondarySendWarning: '{name}: send in ten seconds',
+    kvkSecondarySendNow: '{name}: send now!',
     ariaMyMarchMin: 'My march minutes',
     ariaMyMarchSec: 'My march seconds',
     ariaEnemyMin: 'Enemy march minutes',
     ariaEnemySec: 'Enemy march seconds',
     ariaRallyMin: 'Rally left minutes',
     ariaRallySec: 'Rally left seconds',
+    ariaRallyName: 'Enemy rally player name',
     unitMinute: 'm',
     unitSecond: 's',
     interval1: '1 s',
@@ -546,9 +602,17 @@ const I18N = {
     unitShortM: '分',
     unitShortS: '秒',
     btnAddRally: '+ 添加集结',
+    btnStartRally: '开始计时',
     btnRemoveRally: '删除',
     kvkEnemyMarch: '敌方行军',
     kvkRallyLeft: '集结剩余',
+    kvkPlayerName: '玩家',
+    kvkPlayerDefaultPrefix: '玩家',
+    kvkRallyInfoReady: '待开始',
+    kvkRallyInfoLandsIn: '落地倒计时',
+    kvkRallyInfoSendIn: '派兵倒计时',
+    kvkQueueEmpty: '队列为空。',
+    kvkQueuePrefix: '队列',
     kvkHelp: '每个集结按：敌方行军时间 + 集结剩余时间。系统只跟踪最早落地的集结。',
     kvkStatusSelectedPrefix: 'KvK 跟踪集结',
     kvkStatusSelectedLandsIn: '落地倒计时',
@@ -556,12 +620,15 @@ const I18N = {
     kvkAlertNoRallies: '请至少添加一个有效集结（敌方行军 + 集结剩余）。',
     kvkTenSecondAlert: '十秒后派兵',
     kvkSendNow: '现在派兵！',
+    kvkSecondarySendWarning: '{name}：十秒后派兵',
+    kvkSecondarySendNow: '{name}：现在派兵！',
     ariaMyMarchMin: '我的行军分钟',
     ariaMyMarchSec: '我的行军秒数',
     ariaEnemyMin: '敌方行军分钟',
     ariaEnemySec: '敌方行军秒数',
     ariaRallyMin: '集结剩余分钟',
     ariaRallySec: '集结剩余秒数',
+    ariaRallyName: '敌方集结玩家名称',
     unitMinute: '分',
     unitSecond: '秒',
     interval1: '1 秒',
@@ -886,6 +953,48 @@ let pauseResolve = null;
 let activeMode = 'normal';
 let kvkTenSecondAlertPlayed = false;
 
+// Per-rally speech plans populated when START is pressed in KvK mode.
+// Each entry: { name, sendIn, isSoonest, tenPlayed, sendPlayed }
+let kvkRallyPlans = [];
+let kvkMaxSendIn  = 0;
+
+// Returns the speech string for a single countdown tick in KvK mode, or null if silent.
+function getKvkSpeechForCount(count, interval, final) {
+  const speeches = [];
+  for (const rally of kvkRallyPlans) {
+    // sendCount: the value of `count` at which this rally's troops must be sent.
+    // For the latest rally sendCount === 0, which is handled post-loop.
+    const sendCount = kvkMaxSendIn - rally.sendIn;
+    const relCount  = count - sendCount; // > 0 = approaching, 0 = send time
+
+    if (relCount < 0) continue; // already past (shouldn't happen inside loop)
+
+    if (rally.isSoonest) {
+      if (relCount === 0 && sendCount > 0 && !rally.sendPlayed) {
+        // sendCount > 0 means this is NOT the final (latest) rally – that fires post-loop.
+        rally.sendPlayed = true;
+        speeches.push(tr('kvkSendNow'));
+      } else if (relCount === 10 && !rally.tenPlayed) {
+        rally.tenPlayed = true;
+        speeches.push(tr('kvkTenSecondAlert'));
+      } else if (relCount > 0 && (relCount <= final || relCount % interval === 0)) {
+        speeches.push(speechTextForCount(relCount));
+      }
+    } else {
+      // Secondary rally: only 10 s warning and send-now. sendCount > 0 guard ensures
+      // the final (latest) rally is not double-announced here and in the post-loop block.
+      if (relCount === 0 && sendCount > 0 && !rally.sendPlayed) {
+        rally.sendPlayed = true;
+        speeches.push(tr('kvkSecondarySendNow').replace('{name}', rally.name));
+      } else if (relCount === 10 && !rally.tenPlayed) {
+        rally.tenPlayed = true;
+        speeches.push(tr('kvkSecondarySendWarning').replace('{name}', rally.name));
+      }
+    }
+  }
+  return speeches.length > 0 ? speeches.join('. ') : null;
+}
+
 let currentStatusKey = 'statusReady';
 function setStatusKey(key) {
   currentStatusKey = key;
@@ -961,9 +1070,106 @@ function isValidRallyIndex(idx) {
 }
 
 const kvkRallies = [];
+let kvkRallyNameSeed = 1;
 
-function addKvkRally(enemySeconds = 0, rallyLeftSeconds = 0) {
-  kvkRallies.push({ enemySeconds, rallyLeftSeconds });
+function getKvkDefaultName(index) {
+  return `${tr('kvkPlayerDefaultPrefix')} ${index + 1}`;
+}
+
+function getNextKvkDefaultName() {
+  syncKvkNameSeed();
+  const next = `${tr('kvkPlayerDefaultPrefix')} ${kvkRallyNameSeed}`;
+  kvkRallyNameSeed += 1;
+  return next;
+}
+
+function syncKvkNameSeed() {
+  const prefix = `${tr('kvkPlayerDefaultPrefix')} `;
+  let maxFound = 0;
+  kvkRallies.forEach(rally => {
+    const name = (rally.name || '').trim();
+    if (!name.startsWith(prefix)) return;
+    const value = parseInt(name.slice(prefix.length), 10);
+    if (!isNaN(value) && value > maxFound) maxFound = value;
+  });
+  kvkRallyNameSeed = Math.max(kvkRallyNameSeed, maxFound + 1);
+}
+
+function getKvkRuntime(rally) {
+  const landingBase = Math.max(0, (rally.enemySeconds || 0) + (rally.rallyLeftSeconds || 0));
+  if ((rally.startedAtMs || 0) <= 0 || (rally.startedLandingIn || 0) <= 0) {
+    return {
+      isStarted: false,
+      landingIn: landingBase
+    };
+  }
+  const elapsed = Math.floor((Date.now() - rally.startedAtMs) / 1000);
+  const landingIn = Math.max(0, rally.startedLandingIn - elapsed);
+  return {
+    isStarted: true,
+    landingIn
+  };
+}
+
+function updateKvkQueueOutput() {
+  const output = document.getElementById('kvk-queue-output');
+  if (!output) return;
+  const myMarch = parseMinSec(
+    document.getElementById('my-march-min').value,
+    document.getElementById('my-march-sec').value
+  );
+  const queue = kvkRallies
+    .map((rally, index) => {
+      const runtime = getKvkRuntime(rally);
+      return {
+        index,
+        name: (rally.name || '').trim() || getKvkDefaultName(index),
+        landingIn: runtime.landingIn,
+        sendIn: Math.max(0, runtime.landingIn - myMarch),
+        isStarted: runtime.isStarted
+      };
+    })
+    .filter(item => item.isStarted)
+    .sort((a, b) => (a.landingIn - b.landingIn) || (a.index - b.index));
+
+  if (!queue.length) {
+    output.textContent = tr('kvkQueueEmpty');
+    return;
+  }
+
+  output.textContent = `${tr('kvkQueuePrefix')}: `
+    + queue.map(item => `${item.name} (${tr('kvkRallyInfoLandsIn')} ${formatClock(item.landingIn)})`).join(' • ');
+}
+
+function updateKvkRallyInfoText() {
+  const myMarch = parseMinSec(
+    document.getElementById('my-march-min').value,
+    document.getElementById('my-march-sec').value
+  );
+  document.querySelectorAll('.kvk-rally-info').forEach(info => {
+    const idx = parseInt(info.dataset.index, 10);
+    if (!isValidRallyIndex(idx)) return;
+    const runtime = getKvkRuntime(kvkRallies[idx]);
+    const sendIn = Math.max(0, runtime.landingIn - myMarch);
+    info.textContent = runtime.isStarted
+      ? `${tr('kvkRallyInfoLandsIn')} ${formatClock(runtime.landingIn)} • ${tr('kvkRallyInfoSendIn')} ${formatClock(sendIn)}`
+      : `${tr('kvkRallyInfoReady')} • ${tr('kvkRallyInfoLandsIn')} ${formatClock(runtime.landingIn)}`;
+  });
+  updateKvkQueueOutput();
+}
+
+function hasStartedKvkRally() {
+  return kvkRallies.some(rally => (rally.startedAtMs || 0) > 0 && (rally.startedLandingIn || 0) > 0);
+}
+
+function addKvkRally(enemySeconds = 0, rallyLeftSeconds = 0, name = '') {
+  kvkRallies.push({
+    name: (name || '').trim() || getNextKvkDefaultName(),
+    enemySeconds,
+    rallyLeftSeconds,
+    startedAtMs: 0,
+    startedLandingIn: 0
+  });
   renderKvkRallies();
 }
 
@@ -973,6 +1179,19 @@ function renderKvkRallies() {
   kvkRallies.forEach((rally, index) => {
     const row = document.createElement('div');
     row.className = 'kvk-rally-row';
+
+    const name = document.createElement('div');
+    name.className = 'kvk-rally-name';
+    const nameLabel = document.createElement('span');
+    nameLabel.textContent = tr('kvkPlayerName');
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = rally.name || '';
+    nameInput.dataset.kind = 'name';
+    nameInput.dataset.index = String(index);
+    nameInput.setAttribute('aria-label', tr('ariaRallyName'));
+    name.appendChild(nameLabel);
+    name.appendChild(nameInput);
 
     const enemy = document.createElement('div');
     enemy.className = 'kvk-rally-cell';
@@ -994,6 +1213,22 @@ function renderKvkRallies() {
       <span>${tr('unitShortS')}</span>
     `;
 
+    const start = document.createElement('button');
+    start.type = 'button';
+    start.className = 'kvk-rally-start';
+    start.dataset.index = String(index);
+    start.textContent = tr('btnStartRally');
+    start.addEventListener('click', event => {
+      const idx = parseInt(event.currentTarget.dataset.index, 10);
+      if (!isValidRallyIndex(idx)) return;
+      const rallyData = kvkRallies[idx];
+      const landingIn = Math.max(0, (rallyData.enemySeconds || 0) + (rallyData.rallyLeftSeconds || 0));
+      if (landingIn <= 0) return;
+      rallyData.startedAtMs = Date.now();
+      rallyData.startedLandingIn = landingIn;
+      updateKvkRallyInfoText();
+    });
+
     const remove = document.createElement('button');
     remove.type = 'button';
     remove.className = 'kvk-rally-remove';
@@ -1006,9 +1241,16 @@ function renderKvkRallies() {
       renderKvkRallies();
     });
 
+    const info = document.createElement('div');
+    info.className = 'kvk-rally-info';
+    info.dataset.index = String(index);
+
+    row.appendChild(name);
     row.appendChild(enemy);
     row.appendChild(left);
+    row.appendChild(start);
     row.appendChild(remove);
+    row.appendChild(info);
     wrap.appendChild(row);
   });
 
@@ -1016,13 +1258,26 @@ function renderKvkRallies() {
     input.addEventListener('change', () => {
       const idx = parseInt(input.dataset.index, 10);
       if (!isValidRallyIndex(idx)) return;
-      const rowInputs = wrap.querySelectorAll(`input[data-index="${idx}"]`);
-      const get = kind => Array.from(rowInputs).find(el => el.dataset.kind === kind)?.value || '0';
+      const rowInputs = [...wrap.querySelectorAll(`input[type="number"][data-index="${idx}"]`)];
+      const get = kind => rowInputs.find(el => el.dataset.kind === kind)?.value || '0';
       kvkRallies[idx].enemySeconds = parseMinSec(get('enemy-min'), get('enemy-sec'));
       kvkRallies[idx].rallyLeftSeconds = parseMinSec(get('left-min'), get('left-sec'));
+      kvkRallies[idx].startedAtMs = 0;
+      kvkRallies[idx].startedLandingIn = 0;
       renderKvkRallies();
     });
   });
+
+  wrap.querySelectorAll('input[type=text][data-kind="name"]').forEach(input => {
+    input.addEventListener('change', () => {
+      const idx = parseInt(input.dataset.index, 10);
+      if (!isValidRallyIndex(idx)) return;
+      kvkRallies[idx].name = (input.value || '').trim() || getKvkDefaultName(idx);
+      updateKvkRallyInfoText();
+    });
+  });
+
+  updateKvkRallyInfoText();
 }
 
 function getKvkPlan() {
@@ -1034,25 +1289,33 @@ function getKvkPlan() {
   const validRallies = kvkRallies
     .map((r, idx) => ({
       index: idx,
+      name: (r.name || '').trim() || getKvkDefaultName(idx),
       enemySeconds: Math.max(0, r.enemySeconds || 0),
       rallyLeftSeconds: Math.max(0, r.rallyLeftSeconds || 0)
     }))
     .filter(r => r.enemySeconds > 0 && r.rallyLeftSeconds > 0)
     .map(r => ({
       index: r.index,
+      name: r.name,
       enemySeconds: r.enemySeconds,
       rallyLeftSeconds: r.rallyLeftSeconds,
-      landingIn: r.enemySeconds + r.rallyLeftSeconds
+      landingIn: r.enemySeconds + r.rallyLeftSeconds,
+      sendIn: Math.max(0, r.enemySeconds + r.rallyLeftSeconds - myMarch)
     }));
 
   if (!validRallies.length) {
     return null;
   }
 
-  validRallies.sort((a, b) => a.landingIn - b.landingIn);
+  // Sort by sendIn ascending so validRallies[0] is the rally you must send for soonest.
+  // sendIn = max(0, landingIn - myMarch). When myMarch < landingIn the sort is equivalent
+  // to sorting by landingIn; when myMarch >= landingIn sendIn is clamped to 0 and ties are
+  // broken by rally index.
+  validRallies.sort((a, b) => (a.sendIn - b.sendIn) || (a.index - b.index));
   const target = validRallies[0];
-  const sendIn = Math.max(0, target.landingIn - myMarch);
-  return { myMarch, target, sendIn };
+  const sendIn = target.sendIn;
+  const totalDuration = validRallies[validRallies.length - 1].sendIn;
+  return { myMarch, target, sendIn, allRallies: validRallies, totalDuration };
 }
 
 function applyModeUi() {
@@ -1136,10 +1399,15 @@ document.querySelectorAll('input[name=lang]').forEach(el => {
   });
 });
 document.getElementById('btn-add-rally').addEventListener('click', () => addKvkRally());
+document.getElementById('my-march-min').addEventListener('input', updateKvkRallyInfoText);
+document.getElementById('my-march-sec').addEventListener('input', updateKvkRallyInfoText);
 normalizeDurationInputs();
 if (kvkRallies.length === 0) addKvkRally();
 applyModeUi();
 applyUiLanguage();
+setInterval(() => {
+  if (activeMode === 'kvk' && hasStartedKvkRally()) updateKvkRallyInfoText();
+}, 1000);
 
 // ── Countdown engine ───────────────────────────────────────────────────────
 async function countdown() {
@@ -1161,19 +1429,35 @@ async function countdown() {
     // Update clock
     remaining = count;
     clockEl.textContent = formatClock(count);
-    clockEl.classList.toggle('urgent', count <= 10);
+    if (activeMode === 'kvk') {
+      // Treat clock as urgent whenever any rally is within 10 s of its send time.
+      const kvkUrgent = kvkRallyPlans.some(rally => {
+        const relCount = count - (kvkMaxSendIn - rally.sendIn);
+        return relCount >= 0 && relCount <= 10;
+      });
+      clockEl.classList.toggle('urgent', kvkUrgent);
+    } else {
+      clockEl.classList.toggle('urgent', count <= 10);
+    }
 
     // Flash screen?
     const flashAt = getFlashAt();
     if (flashAt > 0 && count <= flashAt) startFlash();
 
     // Speak?
-    const shouldKvkAlert = activeMode === 'kvk' && !kvkTenSecondAlertPlayed && count === 10;
-    if (shouldKvkAlert || count <= final || count % interval === 0) {
-      if (shouldKvkAlert) kvkTenSecondAlertPlayed = true;
-      primeUpcoming(count, interval, final);
+    let textToSpeak = null;
+    if (activeMode === 'kvk') {
+      textToSpeak = getKvkSpeechForCount(count, interval, final);
+    } else {
+      if (count <= final || count % interval === 0) {
+        textToSpeak = speechTextForCount(count);
+      }
+    }
+
+    if (textToSpeak !== null) {
+      if (activeMode !== 'kvk') primeUpcoming(count, interval, final);
       const t0 = performance.now();
-      await speak(shouldKvkAlert ? tr('kvkTenSecondAlert') : speechTextForCount(count));
+      await speak(textToSpeak);
       if (token !== countdownToken) return;
       const spoke = performance.now() - t0;
       // Sleep the remainder of this second
@@ -1188,7 +1472,28 @@ async function countdown() {
     clockEl.textContent = '00:00';
     clockEl.classList.remove('urgent');
     stopFlash();
-    await speak(activeMode === 'kvk' ? tr('kvkSendNow') : completionSpeechText());
+    let finalSpeech;
+    if (activeMode === 'kvk') {
+      // Announce every rally whose send fires at count === 0 (the last tick / latest sendIn).
+      const finalSpeeches = [];
+      for (const rally of kvkRallyPlans) {
+        const sendCount = kvkMaxSendIn - rally.sendIn;
+        if (sendCount === 0 && !rally.sendPlayed) {
+          rally.sendPlayed = true;
+          finalSpeeches.push(
+            // Single-rally: use the generic "send now" to preserve the existing voice experience.
+            // Multi-rally: include the player name so the caller knows whose rally is landing.
+            kvkRallyPlans.length === 1
+              ? tr('kvkSendNow')
+              : tr('kvkSecondarySendNow').replace('{name}', rally.name)
+          );
+        }
+      }
+      finalSpeech = finalSpeeches.length > 0 ? finalSpeeches.join('. ') : tr('kvkSendNow');
+    } else {
+      finalSpeech = completionSpeechText();
+    }
+    await speak(finalSpeech);
     setStatusKey('statusDone');
     resetButtons();
     running = false;
@@ -1201,7 +1506,17 @@ btnStart.addEventListener('click', async () => {
   if (activeMode === 'kvk') {
     const plan = getKvkPlan();
     if (!plan) { alert(tr('kvkAlertNoRallies')); return; }
-    dur = plan.sendIn;
+    dur = plan.totalDuration;
+    kvkMaxSendIn  = plan.totalDuration;
+    kvkRallyPlans = plan.allRallies.map((r, i) => ({
+      name: r.name,
+      sendIn: r.sendIn,
+      // isSoonest === true only for index 0, which is the first entry after getKvkPlan()'s
+      // ascending-sendIn sort, i.e. the rally you must send for earliest.
+      isSoonest: i === 0,
+      tenPlayed: false,
+      sendPlayed: false
+    }));
     setCustomStatus(
       `${tr('kvkStatusSelectedPrefix')} #${plan.target.index + 1}: `
       + `${tr('kvkStatusSelectedLandsIn')} ${formatClock(plan.target.landingIn)}, `
