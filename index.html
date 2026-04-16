@@ -328,9 +328,9 @@
     <div class="kvk-panel">
       <div class="kvk-rally-cell">
         <span id="label-my-march">My march</span>
-        <input type="number" id="my-march-min" min="0" max="999" value="0" />
+        <input type="number" id="my-march-min" min="0" max="999" value="0" aria-label="My march minutes" />
         <span id="unit-my-march-min">m</span>
-        <input type="number" id="my-march-sec" min="0" max="59" value="0" />
+        <input type="number" id="my-march-sec" min="0" max="59" value="0" aria-label="My march seconds" />
         <span id="unit-my-march-sec">s</span>
       </div>
       <div id="kvk-rallies"></div>
@@ -480,6 +480,12 @@ const I18N = {
     kvkAlertNoRallies: 'Add at least one rally with enemy march and rally time left.',
     kvkTenSecondAlert: 'Send march in ten seconds',
     kvkSendNow: 'Send your march now!',
+    ariaMyMarchMin: 'My march minutes',
+    ariaMyMarchSec: 'My march seconds',
+    ariaEnemyMin: 'Enemy march minutes',
+    ariaEnemySec: 'Enemy march seconds',
+    ariaRallyMin: 'Rally left minutes',
+    ariaRallySec: 'Rally left seconds',
     unitMinute: 'm',
     unitSecond: 's',
     interval1: '1 s',
@@ -550,6 +556,12 @@ const I18N = {
     kvkAlertNoRallies: '请至少添加一个有效集结（敌方行军 + 集结剩余）。',
     kvkTenSecondAlert: '十秒后派兵',
     kvkSendNow: '现在派兵！',
+    ariaMyMarchMin: '我的行军分钟',
+    ariaMyMarchSec: '我的行军秒数',
+    ariaEnemyMin: '敌方行军分钟',
+    ariaEnemySec: '敌方行军秒数',
+    ariaRallyMin: '集结剩余分钟',
+    ariaRallySec: '集结剩余秒数',
     unitMinute: '分',
     unitSecond: '秒',
     interval1: '1 秒',
@@ -903,6 +915,8 @@ function applyUiLanguage() {
   document.getElementById('unit-my-march-sec').textContent = tr('unitShortS');
   document.getElementById('btn-add-rally').textContent = tr('btnAddRally');
   document.getElementById('kvk-help').textContent = tr('kvkHelp');
+  document.getElementById('my-march-min').setAttribute('aria-label', tr('ariaMyMarchMin'));
+  document.getElementById('my-march-sec').setAttribute('aria-label', tr('ariaMyMarchSec'));
   document.getElementById('unit-min').textContent = tr('unitMinute');
   document.getElementById('unit-sec').textContent = tr('unitSecond');
   document.getElementById('interval-1').textContent = tr('interval1');
@@ -956,9 +970,9 @@ function renderKvkRallies() {
     enemy.className = 'kvk-rally-cell';
     enemy.innerHTML = `
       <span>${tr('kvkEnemyMarch')}</span>
-      <input type="number" min="0" max="999" value="${Math.floor(rally.enemySeconds / 60)}" data-kind="enemy-min" data-index="${index}" />
+      <input type="number" min="0" max="999" value="${Math.floor(rally.enemySeconds / 60)}" data-kind="enemy-min" data-index="${index}" aria-label="${tr('ariaEnemyMin')}" />
       <span>${tr('unitShortM')}</span>
-      <input type="number" min="0" max="59" value="${rally.enemySeconds % 60}" data-kind="enemy-sec" data-index="${index}" />
+      <input type="number" min="0" max="59" value="${rally.enemySeconds % 60}" data-kind="enemy-sec" data-index="${index}" aria-label="${tr('ariaEnemySec')}" />
       <span>${tr('unitShortS')}</span>
     `;
 
@@ -966,9 +980,9 @@ function renderKvkRallies() {
     left.className = 'kvk-rally-cell';
     left.innerHTML = `
       <span>${tr('kvkRallyLeft')}</span>
-      <input type="number" min="0" max="999" value="${Math.floor(rally.rallyLeftSeconds / 60)}" data-kind="left-min" data-index="${index}" />
+      <input type="number" min="0" max="999" value="${Math.floor(rally.rallyLeftSeconds / 60)}" data-kind="left-min" data-index="${index}" aria-label="${tr('ariaRallyMin')}" />
       <span>${tr('unitShortM')}</span>
-      <input type="number" min="0" max="59" value="${rally.rallyLeftSeconds % 60}" data-kind="left-sec" data-index="${index}" />
+      <input type="number" min="0" max="59" value="${rally.rallyLeftSeconds % 60}" data-kind="left-sec" data-index="${index}" aria-label="${tr('ariaRallySec')}" />
       <span>${tr('unitShortS')}</span>
     `;
 
@@ -1013,7 +1027,12 @@ function getKvkPlan() {
       rallyLeftSeconds: Math.max(0, r.rallyLeftSeconds || 0)
     }))
     .filter(r => r.enemySeconds > 0 || r.rallyLeftSeconds > 0)
-    .map(r => ({ ...r, landingIn: r.enemySeconds + r.rallyLeftSeconds }));
+    .map(r => ({
+      index: r.index,
+      enemySeconds: r.enemySeconds,
+      rallyLeftSeconds: r.rallyLeftSeconds,
+      landingIn: r.enemySeconds + r.rallyLeftSeconds
+    }));
 
   if (!validRallies.length) {
     return null;
