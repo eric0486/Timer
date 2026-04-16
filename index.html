@@ -1308,7 +1308,9 @@ function getKvkPlan() {
   }
 
   // Sort by sendIn ascending so validRallies[0] is the rally you must send for soonest.
-  // sendIn = landingIn - myMarch (constant offset), so this is equivalent to sorting by landingIn.
+  // sendIn = max(0, landingIn - myMarch). When myMarch < landingIn the sort is equivalent
+  // to sorting by landingIn; when myMarch >= landingIn sendIn is clamped to 0 and ties are
+  // broken by rally index.
   validRallies.sort((a, b) => (a.sendIn - b.sendIn) || (a.index - b.index));
   const target = validRallies[0];
   const sendIn = target.sendIn;
@@ -1404,7 +1406,7 @@ if (kvkRallies.length === 0) addKvkRally();
 applyModeUi();
 applyUiLanguage();
 setInterval(() => {
-  if (hasStartedKvkRally()) updateKvkRallyInfoText();
+  if (activeMode === 'kvk' && hasStartedKvkRally()) updateKvkRallyInfoText();
 }, 1000);
 
 // ── Countdown engine ───────────────────────────────────────────────────────
@@ -1481,7 +1483,7 @@ async function countdown() {
           finalSpeeches.push(
             // Single-rally: use the generic "send now" to preserve the existing voice experience.
             // Multi-rally: include the player name so the caller knows whose rally is landing.
-            rally.isSoonest && kvkRallyPlans.length === 1
+            kvkRallyPlans.length === 1
               ? tr('kvkSendNow')
               : tr('kvkSecondarySendNow').replace('{name}', rally.name)
           );
