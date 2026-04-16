@@ -381,7 +381,7 @@
       <div>
         <button type="button" id="btn-add-rally">+ Add Rally</button>
       </div>
-      <div id="kvk-queue-output" class="kvk-queue-output" role="status" aria-live="polite"></div>
+      <div id="kvk-queue-output" class="kvk-queue-output" role="status" aria-live="assertive"></div>
       <div class="kvk-hint" id="kvk-help">
         Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.
       </div>
@@ -971,7 +971,7 @@ function getKvkSpeechForCount(count, interval, final) {
 
     if (rally.isSoonest) {
       if (relCount === 0 && sendCount > 0 && !rally.sendPlayed) {
-        // Soonest rally fires mid-countdown (not the very last event).
+        // sendCount > 0 means this is NOT the final (latest) rally – that fires post-loop.
         rally.sendPlayed = true;
         speeches.push(tr('kvkSendNow'));
       } else if (relCount === 10 && !rally.tenPlayed) {
@@ -981,7 +981,8 @@ function getKvkSpeechForCount(count, interval, final) {
         speeches.push(speechTextForCount(relCount));
       }
     } else {
-      // Secondary rally: only 10 s warning and send-now.
+      // Secondary rally: only 10 s warning and send-now. sendCount > 0 guard ensures
+      // the final (latest) rally is not double-announced here and in the post-loop block.
       if (relCount === 0 && sendCount > 0 && !rally.sendPlayed) {
         rally.sendPlayed = true;
         speeches.push(tr('kvkSecondarySendNow').replace('{name}', rally.name));
@@ -1089,7 +1090,7 @@ function syncKvkNameSeed() {
     const name = (rally.name || '').trim();
     if (!name.startsWith(prefix)) return;
     const value = parseInt(name.slice(prefix.length), 10);
-    if (Number.isInteger(value) && value > maxFound) maxFound = value;
+    if (!isNaN(value) && value > maxFound) maxFound = value;
   });
   kvkRallyNameSeed = Math.max(kvkRallyNameSeed, maxFound + 1);
 }
@@ -1306,6 +1307,8 @@ function getKvkPlan() {
     return null;
   }
 
+  // Sort by sendIn ascending so validRallies[0] is the rally you must send for soonest.
+  // sendIn = landingIn - myMarch (constant offset), so this is equivalent to sorting by landingIn.
   validRallies.sort((a, b) => (a.sendIn - b.sendIn) || (a.index - b.index));
   const target = validRallies[0];
   const sendIn = target.sendIn;
@@ -1476,6 +1479,8 @@ async function countdown() {
         if (sendCount === 0 && !rally.sendPlayed) {
           rally.sendPlayed = true;
           finalSpeeches.push(
+            // Single-rally: use the generic "send now" to preserve the existing voice experience.
+            // Multi-rally: include the player name so the caller knows whose rally is landing.
             rally.isSoonest && kvkRallyPlans.length === 1
               ? tr('kvkSendNow')
               : tr('kvkSecondarySendNow').replace('{name}', rally.name)
@@ -1504,6 +1509,8 @@ btnStart.addEventListener('click', async () => {
     kvkRallyPlans = plan.allRallies.map((r, i) => ({
       name: r.name,
       sendIn: r.sendIn,
+      // isSoonest === true only for index 0, which is the first entry after getKvkPlan()'s
+      // ascending-sendIn sort, i.e. the rally you must send for earliest.
       isSoonest: i === 0,
       tenPlayed: false,
       sendPlayed: false
