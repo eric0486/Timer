@@ -381,7 +381,7 @@
       <div>
         <button type="button" id="btn-add-rally">+ Add Rally</button>
       </div>
-      <div id="kvk-queue-output" class="kvk-queue-output"></div>
+      <div id="kvk-queue-output" class="kvk-queue-output" role="status" aria-live="polite"></div>
       <div class="kvk-hint" id="kvk-help">
         Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.
       </div>
@@ -1031,9 +1031,22 @@ function getKvkDefaultName(index) {
 }
 
 function getNextKvkDefaultName() {
+  syncKvkNameSeed();
   const next = `${tr('kvkPlayerDefaultPrefix')} ${kvkRallyNameSeed}`;
   kvkRallyNameSeed += 1;
   return next;
+}
+
+function syncKvkNameSeed() {
+  const prefix = `${tr('kvkPlayerDefaultPrefix')} `;
+  let maxFound = 0;
+  kvkRallies.forEach(rally => {
+    const name = (rally.name || '').trim();
+    if (!name.startsWith(prefix)) return;
+    const value = parseInt(name.slice(prefix.length), 10);
+    if (Number.isInteger(value) && value > maxFound) maxFound = value;
+  });
+  kvkRallyNameSeed = Math.max(kvkRallyNameSeed, maxFound + 1);
 }
 
 function getKvkRuntime(rally) {
@@ -1195,7 +1208,8 @@ function renderKvkRallies() {
     input.addEventListener('change', () => {
       const idx = parseInt(input.dataset.index, 10);
       if (!isValidRallyIndex(idx)) return;
-      const rowInputs = wrap.querySelectorAll(`input[data-index="${idx}"][type="number"]`);
+      const rowInputs = Array.from(wrap.querySelectorAll('input[type="number"]'))
+        .filter(el => parseInt(el.dataset.index, 10) === idx);
       const get = kind => Array.from(rowInputs).find(el => el.dataset.kind === kind)?.value || '0';
       kvkRallies[idx].enemySeconds = parseMinSec(get('enemy-min'), get('enemy-sec'));
       kvkRallies[idx].rallyLeftSeconds = parseMinSec(get('left-min'), get('left-sec'));
