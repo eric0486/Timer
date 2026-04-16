@@ -192,9 +192,9 @@
       padding-top: 8px;
     }
     #btn-add-rally {
-      background: #e5e7eb;
-      color: #111827;
-      border: 1px solid #9ca3af;
+      background: var(--fg);
+      color: var(--bg);
+      border: 1px solid var(--gray);
       padding: 7px 12px;
       font-size: .85rem;
     }
@@ -1024,9 +1024,16 @@ function isValidRallyIndex(idx) {
 }
 
 const kvkRallies = [];
+let kvkRallyNameSeed = 1;
 
 function getKvkDefaultName(index) {
   return `${tr('kvkPlayerDefaultPrefix')} ${index + 1}`;
+}
+
+function getNextKvkDefaultName() {
+  const next = `${tr('kvkPlayerDefaultPrefix')} ${kvkRallyNameSeed}`;
+  kvkRallyNameSeed += 1;
+  return next;
 }
 
 function getKvkRuntime(rally) {
@@ -1094,7 +1101,7 @@ function updateKvkRallyInfoText() {
 
 function addKvkRally(enemySeconds = 0, rallyLeftSeconds = 0, name = '') {
   kvkRallies.push({
-    name: (name || '').trim() || getKvkDefaultName(kvkRallies.length),
+    name: (name || '').trim() || getNextKvkDefaultName(),
     enemySeconds,
     rallyLeftSeconds,
     startedAtMs: 0,
@@ -1152,7 +1159,6 @@ function renderKvkRallies() {
       const idx = parseInt(event.currentTarget.dataset.index, 10);
       if (!isValidRallyIndex(idx)) return;
       const rallyData = kvkRallies[idx];
-      rallyData.name = (rallyData.name || '').trim() || getKvkDefaultName(idx);
       const landingIn = Math.max(0, (rallyData.enemySeconds || 0) + (rallyData.rallyLeftSeconds || 0));
       if (landingIn <= 0) return;
       rallyData.startedAtMs = Date.now();
