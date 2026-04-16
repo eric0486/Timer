@@ -23,6 +23,11 @@ Files in this folder
 Notes:
 - Flash screen can be set from 0 to 90 seconds (0 = off).
 - Countdown speaks number names each interval (for example: "ninety", "eighty nine", etc.).
+- New option: KvK Auto Rally mode.
+  - Set your own march time to target.
+  - Add one or more enemy rallies (enemy march time + rally time left).
+  - The timer automatically picks the rally that lands the soonest.
+  - It counts down to your required send time and gives an audible alert 10 seconds before send.
 
 
 2) Python version (optional)
