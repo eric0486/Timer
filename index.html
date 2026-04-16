@@ -533,6 +533,8 @@ const I18N = {
     kvkAlertNoRallies: 'Add at least one rally with enemy march and rally time left.',
     kvkTenSecondAlert: 'Send march in ten seconds',
     kvkSendNow: 'Send your march now!',
+    kvkSecondarySendWarning: '{name}: send in ten seconds',
+    kvkSecondarySendNow: '{name}: send now!',
     ariaMyMarchMin: 'My march minutes',
     ariaMyMarchSec: 'My march seconds',
     ariaEnemyMin: 'Enemy march minutes',
@@ -618,6 +620,8 @@ const I18N = {
     kvkAlertNoRallies: '请至少添加一个有效集结（敌方行军 + 集结剩余）。',
     kvkTenSecondAlert: '十秒后派兵',
     kvkSendNow: '现在派兵！',
+    kvkSecondarySendWarning: '{name}：十秒后派兵',
+    kvkSecondarySendNow: '{name}：现在派兵！',
     ariaMyMarchMin: '我的行军分钟',
     ariaMyMarchSec: '我的行军秒数',
     ariaEnemyMin: '敌方行军分钟',
@@ -949,6 +953,47 @@ let pauseResolve = null;
 let activeMode = 'normal';
 let kvkTenSecondAlertPlayed = false;
 
+// Per-rally speech plans populated when START is pressed in KvK mode.
+// Each entry: { name, sendIn, isSoonest, tenPlayed, sendPlayed }
+let kvkRallyPlans = [];
+let kvkMaxSendIn  = 0;
+
+// Returns the speech string for a single countdown tick in KvK mode, or null if silent.
+function getKvkSpeechForCount(count, interval, final) {
+  const speeches = [];
+  for (const rally of kvkRallyPlans) {
+    // sendCount: the value of `count` at which this rally's troops must be sent.
+    // For the latest rally sendCount === 0, which is handled post-loop.
+    const sendCount = kvkMaxSendIn - rally.sendIn;
+    const relCount  = count - sendCount; // > 0 = approaching, 0 = send time
+
+    if (relCount < 0) continue; // already past (shouldn't happen inside loop)
+
+    if (rally.isSoonest) {
+      if (relCount === 0 && sendCount > 0 && !rally.sendPlayed) {
+        // Soonest rally fires mid-countdown (not the very last event).
+        rally.sendPlayed = true;
+        speeches.push(tr('kvkSendNow'));
+      } else if (relCount === 10 && !rally.tenPlayed) {
+        rally.tenPlayed = true;
+        speeches.push(tr('kvkTenSecondAlert'));
+      } else if (relCount > 0 && (relCount <= final || relCount % interval === 0)) {
+        speeches.push(speechTextForCount(relCount));
+      }
+    } else {
+      // Secondary rally: only 10 s warning and send-now.
+      if (relCount === 0 && sendCount > 0 && !rally.sendPlayed) {
+        rally.sendPlayed = true;
+        speeches.push(tr('kvkSecondarySendNow').replace('{name}', rally.name));
+      } else if (relCount === 10 && !rally.tenPlayed) {
+        rally.tenPlayed = true;
+        speeches.push(tr('kvkSecondarySendWarning').replace('{name}', rally.name));
+      }
+    }
+  }
+  return speeches.length > 0 ? speeches.join('. ') : null;
+}
+
 let currentStatusKey = 'statusReady';
 function setStatusKey(key) {
   currentStatusKey = key;
@@ -1243,25 +1288,29 @@ function getKvkPlan() {
   const validRallies = kvkRallies
     .map((r, idx) => ({
       index: idx,
+      name: (r.name || '').trim() || getKvkDefaultName(idx),
       enemySeconds: Math.max(0, r.enemySeconds || 0),
       rallyLeftSeconds: Math.max(0, r.rallyLeftSeconds || 0)
     }))
     .filter(r => r.enemySeconds > 0 && r.rallyLeftSeconds > 0)
     .map(r => ({
       index: r.index,
+      name: r.name,
       enemySeconds: r.enemySeconds,
       rallyLeftSeconds: r.rallyLeftSeconds,
-      landingIn: r.enemySeconds + r.rallyLeftSeconds
+      landingIn: r.enemySeconds + r.rallyLeftSeconds,
+      sendIn: Math.max(0, r.enemySeconds + r.rallyLeftSeconds - myMarch)
     }));
 
   if (!validRallies.length) {
     return null;
   }
 
-  validRallies.sort((a, b) => a.landingIn - b.landingIn);
+  validRallies.sort((a, b) => (a.sendIn - b.sendIn) || (a.index - b.index));
   const target = validRallies[0];
-  const sendIn = Math.max(0, target.landingIn - myMarch);
-  return { myMarch, target, sendIn };
+  const sendIn = target.sendIn;
+  const totalDuration = validRallies[validRallies.length - 1].sendIn;
+  return { myMarch, target, sendIn, allRallies: validRallies, totalDuration };
 }
 
 function applyModeUi() {
@@ -1375,19 +1424,35 @@ async function countdown() {
     // Update clock
     remaining = count;
     clockEl.textContent = formatClock(count);
-    clockEl.classList.toggle('urgent', count <= 10);
+    if (activeMode === 'kvk') {
+      // Treat clock as urgent whenever any rally is within 10 s of its send time.
+      const kvkUrgent = kvkRallyPlans.some(rally => {
+        const relCount = count - (kvkMaxSendIn - rally.sendIn);
+        return relCount >= 0 && relCount <= 10;
+      });
+      clockEl.classList.toggle('urgent', kvkUrgent);
+    } else {
+      clockEl.classList.toggle('urgent', count <= 10);
+    }
 
     // Flash screen?
     const flashAt = getFlashAt();
     if (flashAt > 0 && count <= flashAt) startFlash();
 
     // Speak?
-    const shouldKvkAlert = activeMode === 'kvk' && !kvkTenSecondAlertPlayed && count === 10;
-    if (shouldKvkAlert || count <= final || count % interval === 0) {
-      if (shouldKvkAlert) kvkTenSecondAlertPlayed = true;
-      primeUpcoming(count, interval, final);
+    let textToSpeak = null;
+    if (activeMode === 'kvk') {
+      textToSpeak = getKvkSpeechForCount(count, interval, final);
+    } else {
+      if (count <= final || count % interval === 0) {
+        textToSpeak = speechTextForCount(count);
+      }
+    }
+
+    if (textToSpeak !== null) {
+      if (activeMode !== 'kvk') primeUpcoming(count, interval, final);
       const t0 = performance.now();
-      await speak(shouldKvkAlert ? tr('kvkTenSecondAlert') : speechTextForCount(count));
+      await speak(textToSpeak);
       if (token !== countdownToken) return;
       const spoke = performance.now() - t0;
       // Sleep the remainder of this second
@@ -1402,7 +1467,26 @@ async function countdown() {
     clockEl.textContent = '00:00';
     clockEl.classList.remove('urgent');
     stopFlash();
-    await speak(activeMode === 'kvk' ? tr('kvkSendNow') : completionSpeechText());
+    let finalSpeech;
+    if (activeMode === 'kvk') {
+      // Announce every rally whose send fires at count === 0 (the last tick / latest sendIn).
+      const finalSpeeches = [];
+      for (const rally of kvkRallyPlans) {
+        const sendCount = kvkMaxSendIn - rally.sendIn;
+        if (sendCount === 0 && !rally.sendPlayed) {
+          rally.sendPlayed = true;
+          finalSpeeches.push(
+            rally.isSoonest && kvkRallyPlans.length === 1
+              ? tr('kvkSendNow')
+              : tr('kvkSecondarySendNow').replace('{name}', rally.name)
+          );
+        }
+      }
+      finalSpeech = finalSpeeches.length > 0 ? finalSpeeches.join('. ') : tr('kvkSendNow');
+    } else {
+      finalSpeech = completionSpeechText();
+    }
+    await speak(finalSpeech);
     setStatusKey('statusDone');
     resetButtons();
     running = false;
@@ -1415,7 +1499,15 @@ btnStart.addEventListener('click', async () => {
   if (activeMode === 'kvk') {
     const plan = getKvkPlan();
     if (!plan) { alert(tr('kvkAlertNoRallies')); return; }
-    dur = plan.sendIn;
+    dur = plan.totalDuration;
+    kvkMaxSendIn  = plan.totalDuration;
+    kvkRallyPlans = plan.allRallies.map((r, i) => ({
+      name: r.name,
+      sendIn: r.sendIn,
+      isSoonest: i === 0,
+      tenPlayed: false,
+      sendPlayed: false
+    }));
     setCustomStatus(
       `${tr('kvkStatusSelectedPrefix')} #${plan.target.index + 1}: `
       + `${tr('kvkStatusSelectedLandsIn')} ${formatClock(plan.target.landingIn)}, `
