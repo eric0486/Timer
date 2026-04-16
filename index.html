@@ -102,6 +102,59 @@
       padding: 4px 2px;
     }
     .dur-group span { color: var(--fg); font-size: 1.1rem; }
+    .dur-group button {
+      background: var(--dark);
+      border: 1px solid #4b5563;
+      border-radius: 6px;
+      color: var(--fg);
+      padding: 6px 10px;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    .dur-group button:hover { border-color: var(--accent); }
+
+    .kvk-panel {
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 10px;
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .kvk-rally-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .kvk-rally-cell {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .kvk-rally-cell input[type=number] {
+      width: 54px;
+      background: var(--bg);
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: var(--fg);
+      font-size: .95rem;
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .kvk-rally-cell span { color: var(--gray); font-size: .8rem; }
+    .kvk-rally-remove {
+      border: 1px solid #555;
+      background: #3b1f1f;
+      color: #fff;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: .78rem;
+      cursor: pointer;
+    }
+    .kvk-rally-remove:hover { border-color: var(--red); }
+    .kvk-hint { font-size: .75rem; color: var(--gray); }
 
     .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
     .chip {
@@ -260,6 +313,36 @@
     </div>
   </div>
 
+  <!-- Timer mode -->
+  <div class="row">
+    <label class="row-label" id="label-mode">Timer Mode</label>
+    <div class="radio-group" id="mode-group">
+      <label><input type="radio" name="timer-mode" value="normal" checked /> <span id="mode-normal">Standard Countdown</span></label>
+      <label><input type="radio" name="timer-mode" value="kvk" /> <span id="mode-kvk">KvK Auto Rally</span></label>
+    </div>
+  </div>
+
+  <!-- KvK auto rally -->
+  <div class="row" id="kvk-row" style="display:none">
+    <label class="row-label" id="label-kvk">KvK Auto Rally</label>
+    <div class="kvk-panel">
+      <div class="kvk-rally-cell">
+        <span id="label-my-march">My march</span>
+        <input type="number" id="my-march-min" min="0" max="999" value="0" />
+        <span id="unit-my-march-min">m</span>
+        <input type="number" id="my-march-sec" min="0" max="59" value="0" />
+        <span id="unit-my-march-sec">s</span>
+      </div>
+      <div id="kvk-rallies"></div>
+      <div>
+        <button type="button" id="btn-add-rally">+ Add Rally</button>
+      </div>
+      <div class="kvk-hint" id="kvk-help">
+        Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.
+      </div>
+    </div>
+  </div>
+
   <!-- Volume -->
   <div class="row">
     <label class="row-label" id="label-volume">Volume</label>
@@ -379,6 +462,24 @@ const I18N = {
     labelFinal: 'Always count last',
     labelFlash: 'Flash screen at last',
     labelVoice: 'Voice',
+    labelMode: 'Timer Mode',
+    modeNormal: 'Standard Countdown',
+    modeKvk: 'KvK Auto Rally',
+    labelKvk: 'KvK Auto Rally',
+    labelMyMarch: 'My march',
+    unitShortM: 'm',
+    unitShortS: 's',
+    btnAddRally: '+ Add Rally',
+    btnRemoveRally: 'Remove',
+    kvkEnemyMarch: 'Enemy march',
+    kvkRallyLeft: 'Rally left',
+    kvkHelp: 'Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.',
+    kvkStatusSelectedPrefix: 'KvK tracking rally',
+    kvkStatusSelectedLandsIn: 'lands in',
+    kvkStatusSelectedSendIn: 'send in',
+    kvkAlertNoRallies: 'Add at least one rally with enemy march and rally time left.',
+    kvkTenSecondAlert: 'Send march in ten seconds',
+    kvkSendNow: 'Send your march now!',
     unitMinute: 'm',
     unitSecond: 's',
     interval1: '1 s',
@@ -431,6 +532,24 @@ const I18N = {
     labelFinal: '最后阶段逐秒播报',
     labelFlash: '最后阶段闪屏',
     labelVoice: '语音',
+    labelMode: '模式',
+    modeNormal: '标准倒计时',
+    modeKvk: 'KvK 自动集结',
+    labelKvk: 'KvK 自动集结',
+    labelMyMarch: '我的行军',
+    unitShortM: '分',
+    unitShortS: '秒',
+    btnAddRally: '+ 添加集结',
+    btnRemoveRally: '删除',
+    kvkEnemyMarch: '敌方行军',
+    kvkRallyLeft: '集结剩余',
+    kvkHelp: '每个集结按：敌方行军时间 + 集结剩余时间。系统只跟踪最早落地的集结。',
+    kvkStatusSelectedPrefix: 'KvK 跟踪集结',
+    kvkStatusSelectedLandsIn: '落地倒计时',
+    kvkStatusSelectedSendIn: '派兵倒计时',
+    kvkAlertNoRallies: '请至少添加一个有效集结（敌方行军 + 集结剩余）。',
+    kvkTenSecondAlert: '十秒后派兵',
+    kvkSendNow: '现在派兵！',
     unitMinute: '分',
     unitSecond: '秒',
     interval1: '1 秒',
@@ -752,6 +871,8 @@ let running   = false;
 let paused    = false;
 let remaining = 0;
 let pauseResolve = null;
+let activeMode = 'normal';
+let kvkTenSecondAlertPlayed = false;
 
 let currentStatusKey = 'statusReady';
 function setStatusKey(key) {
@@ -773,6 +894,15 @@ function applyUiLanguage() {
   document.getElementById('label-final').textContent = tr('labelFinal');
   document.getElementById('label-flash').textContent = tr('labelFlash');
   document.getElementById('label-voice').textContent = tr('labelVoice');
+  document.getElementById('label-mode').textContent = tr('labelMode');
+  document.getElementById('mode-normal').textContent = tr('modeNormal');
+  document.getElementById('mode-kvk').textContent = tr('modeKvk');
+  document.getElementById('label-kvk').textContent = tr('labelKvk');
+  document.getElementById('label-my-march').textContent = tr('labelMyMarch');
+  document.getElementById('unit-my-march-min').textContent = tr('unitShortM');
+  document.getElementById('unit-my-march-sec').textContent = tr('unitShortS');
+  document.getElementById('btn-add-rally').textContent = tr('btnAddRally');
+  document.getElementById('kvk-help').textContent = tr('kvkHelp');
   document.getElementById('unit-min').textContent = tr('unitMinute');
   document.getElementById('unit-sec').textContent = tr('unitSecond');
   document.getElementById('interval-1').textContent = tr('interval1');
@@ -797,6 +927,108 @@ function applyUiLanguage() {
     setStatus(tr(currentStatusKey));
   }
   updateTtsNote();
+  renderKvkRallies();
+}
+
+function parseMinSec(minValue, secValue) {
+  const mRaw = parseInt(minValue, 10);
+  const sRaw = parseInt(secValue, 10);
+  const m = Number.isFinite(mRaw) ? Math.max(0, mRaw) : 0;
+  const s = Number.isFinite(sRaw) ? Math.max(0, sRaw) : 0;
+  return m * 60 + s;
+}
+
+const kvkRallies = [];
+
+function addKvkRally(enemySeconds = 0, rallyLeftSeconds = 0) {
+  kvkRallies.push({ enemySeconds, rallyLeftSeconds });
+  renderKvkRallies();
+}
+
+function renderKvkRallies() {
+  const wrap = document.getElementById('kvk-rallies');
+  wrap.innerHTML = '';
+  kvkRallies.forEach((rally, index) => {
+    const row = document.createElement('div');
+    row.className = 'kvk-rally-row';
+
+    const enemy = document.createElement('div');
+    enemy.className = 'kvk-rally-cell';
+    enemy.innerHTML = `
+      <span>${tr('kvkEnemyMarch')}</span>
+      <input type="number" min="0" max="999" value="${Math.floor(rally.enemySeconds / 60)}" data-kind="enemy-min" data-index="${index}" />
+      <span>${tr('unitShortM')}</span>
+      <input type="number" min="0" max="59" value="${rally.enemySeconds % 60}" data-kind="enemy-sec" data-index="${index}" />
+      <span>${tr('unitShortS')}</span>
+    `;
+
+    const left = document.createElement('div');
+    left.className = 'kvk-rally-cell';
+    left.innerHTML = `
+      <span>${tr('kvkRallyLeft')}</span>
+      <input type="number" min="0" max="999" value="${Math.floor(rally.rallyLeftSeconds / 60)}" data-kind="left-min" data-index="${index}" />
+      <span>${tr('unitShortM')}</span>
+      <input type="number" min="0" max="59" value="${rally.rallyLeftSeconds % 60}" data-kind="left-sec" data-index="${index}" />
+      <span>${tr('unitShortS')}</span>
+    `;
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'kvk-rally-remove';
+    remove.textContent = tr('btnRemoveRally');
+    remove.addEventListener('click', () => {
+      kvkRallies.splice(index, 1);
+      renderKvkRallies();
+    });
+
+    row.appendChild(enemy);
+    row.appendChild(left);
+    row.appendChild(remove);
+    wrap.appendChild(row);
+  });
+
+  wrap.querySelectorAll('input[type=number]').forEach(input => {
+    input.addEventListener('change', () => {
+      const idx = parseInt(input.dataset.index, 10);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= kvkRallies.length) return;
+      const rowInputs = wrap.querySelectorAll(`input[data-index="${idx}"]`);
+      const get = kind => Array.from(rowInputs).find(el => el.dataset.kind === kind)?.value || '0';
+      kvkRallies[idx].enemySeconds = parseMinSec(get('enemy-min'), get('enemy-sec'));
+      kvkRallies[idx].rallyLeftSeconds = parseMinSec(get('left-min'), get('left-sec'));
+      renderKvkRallies();
+    });
+  });
+}
+
+function getKvkPlan() {
+  const myMarch = parseMinSec(
+    document.getElementById('my-march-min').value,
+    document.getElementById('my-march-sec').value
+  );
+
+  const validRallies = kvkRallies
+    .map((r, idx) => ({
+      index: idx,
+      enemySeconds: Math.max(0, r.enemySeconds || 0),
+      rallyLeftSeconds: Math.max(0, r.rallyLeftSeconds || 0)
+    }))
+    .filter(r => r.enemySeconds > 0 || r.rallyLeftSeconds > 0)
+    .map(r => ({ ...r, landingIn: r.enemySeconds + r.rallyLeftSeconds }));
+
+  if (!validRallies.length) {
+    return null;
+  }
+
+  validRallies.sort((a, b) => a.landingIn - b.landingIn);
+  const target = validRallies[0];
+  const sendIn = Math.max(0, target.landingIn - myMarch);
+  return { myMarch, target, sendIn };
+}
+
+function applyModeUi() {
+  const selected = document.querySelector('input[name=timer-mode]:checked');
+  activeMode = selected ? selected.value : 'normal';
+  document.getElementById('kvk-row').style.display = activeMode === 'kvk' ? '' : 'none';
 }
 
 function getDuration() {
@@ -863,13 +1095,19 @@ document.querySelectorAll('[data-preset]').forEach(el => {
     setDurationFromSeconds(el.getAttribute('data-preset'));
   });
 });
+document.querySelectorAll('input[name=timer-mode]').forEach(el => {
+  el.addEventListener('change', applyModeUi);
+});
 document.querySelectorAll('input[name=lang]').forEach(el => {
   el.addEventListener('change', () => {
     populateLocalVoices();
     applyUiLanguage();
   });
 });
+document.getElementById('btn-add-rally').addEventListener('click', () => addKvkRally());
 normalizeDurationInputs();
+if (kvkRallies.length === 0) addKvkRally();
+applyModeUi();
 applyUiLanguage();
 
 // ── Countdown engine ───────────────────────────────────────────────────────
@@ -899,6 +1137,13 @@ async function countdown() {
     if (flashAt > 0 && count <= flashAt) startFlash();
 
     // Speak?
+    if (activeMode === 'kvk' && !kvkTenSecondAlertPlayed && count === 10) {
+      kvkTenSecondAlertPlayed = true;
+      await speak(tr('kvkTenSecondAlert'));
+      if (token !== countdownToken) return;
+      await new Promise(res => setTimeout(res, 1000));
+      continue;
+    }
     if (count <= final || count % interval === 0) {
       primeUpcoming(count, interval, final);
       const t0 = performance.now();
@@ -917,7 +1162,7 @@ async function countdown() {
     clockEl.textContent = '00:00';
     clockEl.classList.remove('urgent');
     stopFlash();
-    await speak(completionSpeechText());
+    await speak(activeMode === 'kvk' ? tr('kvkSendNow') : completionSpeechText());
     setStatusKey('statusDone');
     resetButtons();
     running = false;
@@ -926,8 +1171,21 @@ async function countdown() {
 
 // ── Button handlers ────────────────────────────────────────────────────────
 btnStart.addEventListener('click', async () => {
-  const dur = getDuration();
-  if (dur <= 0) { alert(tr('alertDurationInvalid')); return; }
+  let dur = getDuration();
+  if (activeMode === 'kvk') {
+    const plan = getKvkPlan();
+    if (!plan) { alert(tr('kvkAlertNoRallies')); return; }
+    dur = plan.sendIn;
+    setStatus(
+      `${tr('kvkStatusSelectedPrefix')} #${plan.target.index + 1}: `
+      + `${tr('kvkStatusSelectedLandsIn')} ${formatClock(plan.target.landingIn)}, `
+      + `${tr('kvkStatusSelectedSendIn')} ${formatClock(plan.sendIn)}`
+    );
+    currentStatusKey = '';
+  } else if (dur <= 0) {
+    alert(tr('alertDurationInvalid'));
+    return;
+  }
   countdownToken += 1;
 
   const unlocked = await unlockAudio();
@@ -947,10 +1205,11 @@ btnStart.addEventListener('click', async () => {
   running   = true;
   paused    = false;
   remaining = dur;
+  kvkTenSecondAlertPlayed = false;
   btnStop .disabled = false;
-  setStatusKey('statusRunning');
+  if (currentStatusKey) setStatusKey('statusRunning');
   loadClip(speechTextForCount(dur)).catch(() => {});
-  loadClip(completionSpeechText()).catch(() => {});
+  loadClip(activeMode === 'kvk' ? tr('kvkSendNow') : completionSpeechText()).catch(() => {});
   countdown();
 });
 
