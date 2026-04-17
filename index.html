@@ -963,7 +963,7 @@ function requestSpeak(text, priority = SPEECH_PRIORITY_NORMAL) {
   if (priority < currentSpeechPriority) return;
   const seq = ++speechSequence;
   currentSpeechPriority = priority;
-  speak(text).finally(() => {
+  speak(text).catch(() => {}).finally(() => {
     if (speechSequence === seq) currentSpeechPriority = SPEECH_PRIORITY_NONE;
   });
 }
@@ -1545,6 +1545,7 @@ async function countdown() {
     }
 
     if (speechRequest !== null) {
+      // Fire-and-forget speech keeps countdown ticks aligned to wall time.
       requestSpeak(speechRequest.text, speechRequest.priority);
       if (activeMode === 'kvk') {
         primeKvkUpcoming(count, interval, final);
