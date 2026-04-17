@@ -958,13 +958,13 @@ function requestSpeak(text, priority = SPEECH_PRIORITY_NORMAL) {
   const seq = ++speechSequence;
   currentSpeechPriority = priority;
   speak(text).finally(() => {
-    if (speechSequence === seq) currentSpeechPriority = 0;
+    if (speechSequence === seq) currentSpeechPriority = SPEECH_PRIORITY_NONE;
   });
 }
 
 function clearSpeechPriorityState() {
   speechSequence += 1;
-  currentSpeechPriority = 0;
+  currentSpeechPriority = SPEECH_PRIORITY_NONE;
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────────────
@@ -1008,9 +1008,10 @@ let remaining = 0;
 let pauseResolve = null;
 let activeMode = 'normal';
 let kvkTenSecondAlertPlayed = false;
+const SPEECH_PRIORITY_NONE = 0;
 const SPEECH_PRIORITY_NORMAL = 1;
 const SPEECH_PRIORITY_WARNING = 2;
-let currentSpeechPriority = 0;
+let currentSpeechPriority = SPEECH_PRIORITY_NONE;
 let speechSequence = 0;
 const MAX_TICK_DRIFT_MS = 1500;
 
