@@ -54,7 +54,7 @@ def secs_to_words(n: int) -> str:
     if n < 100:
         t, o = divmod(n, 10)
         # Faster two-digit callout style (e.g. 22 -> "two two") helps keep speech < 1 second.
-        return f'{_DIGITS[t]} {_DIGITS[o]}'
+        return _DIGITS[t] if o == 0 else f'{_DIGITS[t]} {_DIGITS[o]}'
     if n < 1000:
         h, r = divmod(n, 100)
         return _ONES[h] + ' hundred' + (f' {secs_to_words(r)}' if r else '')
