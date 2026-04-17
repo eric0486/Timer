@@ -1491,11 +1491,9 @@ function getKvkPlan() {
     return null;
   }
 
-  // Sort by sendIn ascending so validRallies[0] is the rally you must send for soonest.
-  // sendIn = max(0, landingIn - myMarch). When myMarch < landingIn the sort is equivalent
-  // to sorting by landingIn; when myMarch >= landingIn sendIn is clamped to 0 and ties are
-  // broken by rally index.
-  validRallies.sort((a, b) => (a.sendIn - b.sendIn) || (a.index - b.index));
+  // Sort by sendIn ascending, then landingIn, so validRallies[0] is always the
+  // soonest-landing rally (never just the first input row) when sendIn ties at 0.
+  validRallies.sort((a, b) => (a.sendIn - b.sendIn) || (a.landingIn - b.landingIn) || (a.index - b.index));
   const target = validRallies[0];
   const sendIn = target.sendIn;
   const totalDuration = validRallies[validRallies.length - 1].sendIn;
