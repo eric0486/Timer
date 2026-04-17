@@ -1252,10 +1252,11 @@ function getKvkVisualRuntime(index, myMarch) {
     if (rallyPlan) {
       const countNow = Math.max(0, getCurrentCountdownSeconds());
       const sendCount = kvkMaxSendIn - rallyPlan.sendIn;
-      const sendIn = Math.max(0, countNow - sendCount);
+      const relCount = countNow - sendCount;
+      const sendIn = Math.max(0, relCount);
       return {
         isStarted: true,
-        landingIn: sendIn + myMarch,
+        landingIn: Math.max(0, relCount + myMarch),
         sendIn
       };
     }
