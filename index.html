@@ -1037,6 +1037,7 @@ const MAX_TICK_DRIFT_MS = 1500;
 const KVK_FIXED_ANNOUNCE_INTERVAL = 2;
 const KVK_FIXED_FINAL_SECONDS = 30;
 const KVK_FIXED_FLASH_AT = 10;
+const PRESERVE_KVK_SPEECH_FLAGS = true;
 
 // Per-rally speech plans populated when START is pressed in KvK mode.
 // Each entry includes at least: { index, name, sendIn, isSoonest, tenPlayed, sendPlayed }
@@ -1343,7 +1344,7 @@ function renderKvkRallies() {
       if (activeMode === 'kvk' && running) {
         const plan = getKvkPlan();
         if (plan) {
-          applyKvkPlan(plan, getCurrentCountdownSeconds(), true);
+          applyKvkPlan(plan, getCurrentCountdownSeconds(), PRESERVE_KVK_SPEECH_FLAGS);
           const soonest = kvkRallyPlans.find(r => r.isSoonest);
           if (soonest && soonest.sendIn > 0) {
             loadClip(speechTextForCount(soonest.sendIn)).catch(() => {});
@@ -1417,6 +1418,7 @@ function getKvkPlan() {
       index: idx,
       name: (r.name || '').trim() || getKvkDefaultName(idx),
       landingIn: Math.max(0, getKvkRuntime(r).landingIn),
+      // startedLandingIn > 0 is required because a rally is only startable when landingIn > 0.
       isStarted: (r.startedAtMs || 0) > 0 && (r.startedLandingIn || 0) > 0
     }))
     .filter(r => r.isStarted && r.landingIn > 0)
@@ -1456,6 +1458,7 @@ function applyKvkPlan(plan, referenceCount, preserveFlags = false) {
       index: r.index,
       name: r.name,
       sendIn: r.sendIn,
+      // Always recompute soonest after sorting by current sendIn.
       isSoonest: i === 0,
       tenPlayed: previous ? previous.tenPlayed : false,
       sendPlayed: previous ? previous.sendPlayed : false
