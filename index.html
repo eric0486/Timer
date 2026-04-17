@@ -1012,6 +1012,13 @@ function formatClock(s) {
   return String(m).padStart(2,'0') + ':' + String(r).padStart(2,'0');
 }
 
+function getDisplayedClockSeconds() {
+  const text = clockEl.textContent || '00:00';
+  const parts = text.split(':');
+  if (parts.length !== 2) return 0;
+  return parseMinSec(parts[0], parts[1]);
+}
+
 function setStatus(s) { statusEl.textContent = s; }
 
 // ── Countdown state ────────────────────────────────────────────────────────
@@ -1027,7 +1034,7 @@ const KVK_FIXED_FINAL_SECONDS = 30;
 const KVK_FIXED_FLASH_AT = 10;
 
 // Per-rally speech plans populated when START is pressed in KvK mode.
-// Each entry: { index, name, sendIn, isSoonest, tenPlayed, sendPlayed }
+// Each entry includes at least: { index, name, sendIn, isSoonest, tenPlayed, sendPlayed }
 let kvkRallyPlans = [];
 let kvkMaxSendIn  = 0;
 
@@ -1331,7 +1338,7 @@ function renderKvkRallies() {
       if (activeMode === 'kvk' && running) {
         const plan = getKvkPlan();
         if (plan) {
-          applyKvkPlan(plan, remaining, true);
+          applyKvkPlan(plan, getDisplayedClockSeconds(), true);
           const soonest = kvkRallyPlans.find(r => r.isSoonest);
           if (soonest && soonest.sendIn > 0) {
             loadClip(speechTextForCount(soonest.sendIn)).catch(() => {});
