@@ -415,7 +415,7 @@
   </div>
 
   <!-- Announce interval -->
-  <div class="row">
+  <div class="row" id="announce-row">
     <label class="row-label" id="label-announce">Announce every</label>
     <div class="radio-group" id="interval-group">
       <label><input type="radio" name="interval" value="2" checked /> <span id="interval-2">2 s</span></label>
@@ -427,7 +427,7 @@
   </div>
 
   <!-- Final-N countdown -->
-  <div class="row">
+  <div class="row" id="final-row">
     <label class="row-label" id="label-final">Always count last</label>
     <div class="radio-group" id="final-group">
       <label><input type="radio" name="final" value="5"  />          <span id="final-5">5 s</span></label>
@@ -438,7 +438,7 @@
   </div>
 
   <!-- Flash threshold -->
-  <div class="row">
+  <div class="row" id="flash-row">
     <label class="row-label" id="label-flash">Flash screen at last</label>
     <div class="vol-group">
       <input type="range" id="flash-slider" min="0" max="90" step="1" value="0" />
@@ -1022,6 +1022,9 @@ let pauseResolve = null;
 let activeMode = 'normal';
 let kvkTenSecondAlertPlayed = false;
 const MAX_TICK_DRIFT_MS = 1500;
+const KVK_FIXED_ANNOUNCE_INTERVAL = 2;
+const KVK_FIXED_FINAL_SECONDS = 30;
+const KVK_FIXED_FLASH_AT = 10;
 
 // Per-rally speech plans populated when START is pressed in KvK mode.
 // Each entry: { name, sendIn, isSoonest, tenPlayed, sendPlayed }
@@ -1325,6 +1328,16 @@ function renderKvkRallies() {
       rallyData.startedAtMs = Date.now();
       rallyData.startedLandingIn = landingIn;
       updateKvkRallyInfoText();
+      if (activeMode === 'kvk' && running) {
+        const plan = getKvkPlan();
+        if (plan) {
+          applyKvkPlan(plan, remaining, true);
+          const soonest = kvkRallyPlans.find(r => r.isSoonest);
+          if (soonest && soonest.sendIn > 0) {
+            loadClip(speechTextForCount(soonest.sendIn)).catch(() => {});
+          }
+        }
+      }
       if (activeMode === 'kvk' && !running) {
         startTimerFromCurrentMode();
       }
@@ -1391,9 +1404,10 @@ function getKvkPlan() {
     .map((r, idx) => ({
       index: idx,
       name: (r.name || '').trim() || getKvkDefaultName(idx),
-      landingIn: Math.max(0, getKvkRuntime(r).landingIn)
+      landingIn: Math.max(0, getKvkRuntime(r).landingIn),
+      isStarted: (r.startedAtMs || 0) > 0 && (r.startedLandingIn || 0) > 0
     }))
-    .filter(r => r.landingIn > 0)
+    .filter(r => r.isStarted && r.landingIn > 0)
     .map(r => ({
       index: r.index,
       name: r.name,
@@ -1416,6 +1430,30 @@ function getKvkPlan() {
   return { myMarch, target, sendIn, allRallies: validRallies, totalDuration };
 }
 
+function applyKvkPlan(plan, maxSendIn, preserveFlags = false) {
+  const previousByIndex = new Map();
+  if (preserveFlags) {
+    kvkRallyPlans.forEach(rally => previousByIndex.set(rally.index, rally));
+  }
+  kvkMaxSendIn = Math.max(0, parseInt(maxSendIn, 10) || 0);
+  kvkRallyPlans = plan.allRallies.map((r, i) => {
+    const previous = previousByIndex.get(r.index);
+    return {
+      index: r.index,
+      name: r.name,
+      sendIn: r.sendIn,
+      isSoonest: i === 0,
+      tenPlayed: previous ? previous.tenPlayed : false,
+      sendPlayed: previous ? previous.sendPlayed : false
+    };
+  });
+  setCustomStatus(
+    `${tr('kvkStatusSelectedPrefix')} #${plan.target.index + 1}: `
+    + `${tr('kvkStatusSelectedLandsIn')} ${formatClock(plan.target.landingIn)}, `
+    + `${tr('kvkStatusSelectedSendIn')} ${formatClock(plan.sendIn)}`
+  );
+}
+
 function applyModeUi() {
   const selected = document.querySelector('input[name=timer-mode]:checked');
   activeMode = selected ? selected.value : 'normal';
@@ -1424,6 +1462,9 @@ function applyModeUi() {
   document.getElementById('kvk-row').style.display = activeMode === 'kvk' ? '' : 'none';
   document.getElementById('basic-duration-row').style.display = kvkActive ? 'none' : '';
   document.getElementById('basic-presets-row').style.display = kvkActive ? 'none' : '';
+  document.getElementById('announce-row').style.display = kvkActive ? 'none' : '';
+  document.getElementById('final-row').style.display = kvkActive ? 'none' : '';
+  document.getElementById('flash-row').style.display = kvkActive ? 'none' : '';
 }
 
 function getDuration() {
@@ -1453,12 +1494,15 @@ function setDurationFromSeconds(totalSeconds) {
   document.getElementById('dur-sec').value = String(s);
 }
 function getInterval() {
+  if (activeMode === 'kvk') return KVK_FIXED_ANNOUNCE_INTERVAL;
   return parseInt(document.querySelector('input[name=interval]:checked').value, 10);
 }
 function getFinal() {
+  if (activeMode === 'kvk') return KVK_FIXED_FINAL_SECONDS;
   return parseInt(document.querySelector('input[name=final]:checked').value, 10);
 }
 function getFlashAt() {
+  if (activeMode === 'kvk') return KVK_FIXED_FLASH_AT;
   return Math.min(90, Math.max(0, parseInt(document.getElementById('flash-num').value, 10) || 0));
 }
 function startFlash() { document.body.classList.add('flashing'); }
@@ -1614,21 +1658,7 @@ async function startTimerFromCurrentMode() {
     const plan = getKvkPlan();
     if (!plan) { alert(tr('kvkAlertNoRallies')); return; }
     dur = plan.totalDuration;
-    kvkMaxSendIn  = plan.totalDuration;
-    kvkRallyPlans = plan.allRallies.map((r, i) => ({
-      name: r.name,
-      sendIn: r.sendIn,
-      // isSoonest === true only for index 0, which is the first entry after getKvkPlan()'s
-      // ascending-sendIn sort, i.e. the rally you must send for earliest.
-      isSoonest: i === 0,
-      tenPlayed: false,
-      sendPlayed: false
-    }));
-    setCustomStatus(
-      `${tr('kvkStatusSelectedPrefix')} #${plan.target.index + 1}: `
-      + `${tr('kvkStatusSelectedLandsIn')} ${formatClock(plan.target.landingIn)}, `
-      + `${tr('kvkStatusSelectedSendIn')} ${formatClock(plan.sendIn)}`
-    );
+    applyKvkPlan(plan, plan.totalDuration, false);
   } else if (dur <= 0) {
     alert(tr('alertDurationInvalid'));
     return;
