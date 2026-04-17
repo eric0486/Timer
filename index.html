@@ -726,6 +726,8 @@ let countdownToken = 0;
 const SPEECH_PRIORITY_NONE = 0;
 const SPEECH_PRIORITY_NORMAL = 1;
 const SPEECH_PRIORITY_WARNING = 2;
+let currentSpeechPriority = SPEECH_PRIORITY_NONE;
+let speechSequence = 0;
 let audioUnlocked = false;
 let browserVoiceReady = false;
 let lastTtsError = '';
@@ -1011,8 +1013,6 @@ let remaining = 0;
 let pauseResolve = null;
 let activeMode = 'normal';
 let kvkTenSecondAlertPlayed = false;
-let currentSpeechPriority = SPEECH_PRIORITY_NONE;
-let speechSequence = 0;
 const MAX_TICK_DRIFT_MS = 1500;
 
 // Per-rally speech plans populated when START is pressed in KvK mode.
