@@ -959,11 +959,13 @@ function speak(text) {
 // - SPEECH_PRIORITY_NORMAL: regular countdown numbers.
 // - SPEECH_PRIORITY_WARNING: KvK warning messages that should not be interrupted by normal speech.
 function requestSpeak(text, priority = SPEECH_PRIORITY_NORMAL) {
-  // Intentionally drop lower-priority speech so warning clips remain audible.
+  // Intentionally drop incoming speech if its priority is lower than currently playing speech.
   if (priority < currentSpeechPriority) return;
   const seq = ++speechSequence;
   currentSpeechPriority = priority;
-  speak(text).catch(() => {}).finally(() => {
+  speak(text).catch(() => {
+    // speak() already degrades internally; this is a final defensive no-op.
+  }).finally(() => {
     if (speechSequence === seq) currentSpeechPriority = SPEECH_PRIORITY_NONE;
   });
 }
