@@ -1577,6 +1577,9 @@ let audioUnlocked = false;
 let browserVoiceReady = false;
 let lastTtsError = '';
 let lastCloudProvider = '';
+const AUDIO_UNLOCK_TIMEOUT_MS = 500;
+const AUDIO_CONTEXT_CLEANUP_DELAY_MS = 1000;
+const UTTERANCE_TIMEOUT_MS = 15000;
 
 const browserSynth = window.speechSynthesis || null;
 
@@ -1635,17 +1638,47 @@ populateLocalVoices();
 
 async function unlockAudio() {
   if (audioUnlocked) return true;
-  try {
-    // User-gesture unlock for stricter autoplay policies (Firefox).
-    const silent = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAACJWAAACABAAZGF0YQAAAAA=');
-    silent.volume = 0;
-    await silent.play();
-    silent.pause();
-    audioUnlocked = true;
-    return true;
-  } catch {
-    return false;
+
+  // Prime speechSynthesis synchronously before any await so iOS recognises
+  // the user-gesture context for subsequent speak() calls.
+  if (browserSynth) {
+    try {
+      const prime = new SpeechSynthesisUtterance('');
+      prime.volume = 0;
+      browserSynth.speak(prime);
+      browserSynth.cancel();
+    } catch {}
   }
+
+  // Try AudioContext first – the most reliable unlock path on iOS WebKit.
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      const ctx = new AC();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+      if (ctx.state === 'suspended') await ctx.resume();
+      setTimeout(() => ctx.close(), AUDIO_CONTEXT_CLEANUP_DELAY_MS);
+    }
+  } catch {}
+
+  // Also unlock HTMLAudioElement playback (needed for Google TTS on iOS).
+  // Wrap play() in a race so a stuck Promise never blocks the timer from starting.
+  try {
+    const silent = new Audio('data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==');
+    silent.volume = 0;
+    const p = silent.play();
+    if (p !== undefined) {
+      await Promise.race([p.catch(() => {}), new Promise(r => setTimeout(r, AUDIO_UNLOCK_TIMEOUT_MS))]);
+    }
+    silent.pause();
+  } catch {}
+
+  audioUnlocked = true;
+  return true;
 }
 
 function googleTtsUrl(text) {
@@ -1760,8 +1793,15 @@ function speak(text) {
         utt.lang = targetLang;
         utt.volume = volume;
         utt.rate = rate;
-        utt.onend = () => resolve();
-        utt.onerror = () => resolve();
+        // iOS Safari/Chrome does not always fire onend; use a timeout fallback
+        // so the Promise always resolves and the countdown loop keeps ticking.
+        const safeResolve = (() => {
+          let done = false;
+          return () => { if (!done) { done = true; resolve(); } };
+        })();
+        const uttTimeout = setTimeout(safeResolve, UTTERANCE_TIMEOUT_MS);
+        utt.onend  = () => { clearTimeout(uttTimeout); safeResolve(); };
+        utt.onerror = () => { clearTimeout(uttTimeout); safeResolve(); };
         browserSynth.cancel();
         browserSynth.speak(utt);
       } catch {
@@ -1775,13 +1815,16 @@ function speak(text) {
     }
 
     const use = a => {
-      a.volume       = volume;
-      a.playbackRate = rate;
-      a.currentTime  = 0;
-      currentAudio   = a;
-      a.onended = () => { currentAudio = null; resolve(); };
-      a.onerror = () => { currentAudio = null; fallbackSpeak(); };
-      a.play().catch(() => {
+      // Create a fresh Audio element from the cached src so we never need to
+      // seek a cross-origin element back to 0 – seeking cross-origin audio
+      // fails silently on iOS WebKit, producing no playback.
+      const playEl = (a.src) ? new Audio(a.src) : a;
+      playEl.volume       = volume;
+      playEl.playbackRate = rate;
+      currentAudio        = playEl;
+      playEl.onended = () => { currentAudio = null; resolve(); };
+      playEl.onerror = () => { currentAudio = null; fallbackSpeak(); };
+      playEl.play().catch(() => {
         currentAudio = null;
         fallbackSpeak();
       });
