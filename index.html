@@ -69,7 +69,7 @@
       background: var(--card);
       border-radius: 8px;
       padding: 18px 24px;
-      width: min(520px, 96vw);
+      width: min(680px, 96vw);
       margin-top: 16px;
     }
 
@@ -342,7 +342,6 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      flex-wrap: wrap;
     }
     .fdt-input-row input[type=number] {
       width: 58px;
@@ -526,7 +525,7 @@
           <span>s</span>
         </div>
         <div class="fdt-input-row">
-          <span id="label-fdt-target-march">Target enemy march time</span>
+          <span id="label-fdt-target-march">Lead rally march time</span>
           <input type="number" id="fdt-target-march-min" min="0" max="999" value="0" />
           <span>m</span>
           <input type="number" id="fdt-target-march-sec" min="0" max="59" value="0" />
@@ -549,8 +548,8 @@
       <div class="fdt-section">
         <span class="fdt-section-label" id="label-fdt-offset">Landing Offset After Target</span>
         <div class="fdt-offset-group">
-          <input type="range" id="fdt-offset-slider" min="-120" max="120" step="1" value="5" />
-          <input type="number" id="fdt-offset-num" min="-120" max="120" value="5" />
+          <input type="range" id="fdt-offset-slider" min="0" max="120" step="1" value="5" />
+          <input type="number" id="fdt-offset-num" min="0" max="120" value="5" />
           <span id="fdt-offset-unit">s</span>
         </div>
       </div>
@@ -757,7 +756,7 @@ const I18N = {
     fdtOptCountdown: 'Countdown',
     fdtUtcLabel: 'Target Rally Lands At (UTC)',
     fdtRallyLeft: 'Target rally time left',
-    fdtTargetMarch: 'Target enemy march time',
+    fdtTargetMarch: 'Lead rally march time',
     fdtMyMarch: 'My march time to target',
     fdtOffsetLabel: 'Landing Offset After Target',
     fdtOffsetUnit: 's',
@@ -2376,7 +2375,7 @@ function applyKvkPlan(plan, referenceCount, preserveFlags = false) {
 }
 
 // ── Flamedragon Tyrant (FDT) mode ─────────────────────────────────────────
-const FDT_OFFSET_MIN = -120;
+const FDT_OFFSET_MIN = 0;
 const FDT_OFFSET_MAX = 120;
 
 function getFdtInputMode() {
