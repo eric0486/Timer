@@ -317,6 +317,82 @@
     footer a { color: var(--accent); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
+    /* ── Flamedragon Tyrant panel ─────────────────────────────────── */
+    .fdt-panel {
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 10px;
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .fdt-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .fdt-section-label {
+      font-size: .82rem;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .fdt-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .fdt-input-row input[type=number] {
+      width: 58px;
+      background: var(--bg);
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: var(--fg);
+      font-size: .95rem;
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .fdt-input-row span { color: var(--gray); font-size: .9rem; }
+    .fdt-time-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .fdt-time-group input[type=number] {
+      width: 58px;
+      background: var(--bg);
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: var(--fg);
+      font-size: .95rem;
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .fdt-time-group .fdt-colon { color: var(--fg); font-size: 1.2rem; font-weight: 700; }
+    .fdt-offset-group { display: flex; align-items: center; gap: 8px; }
+    .fdt-offset-group input[type=number] {
+      width: 64px;
+      background: var(--bg);
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: var(--fg);
+      font-size: .95rem;
+      text-align: center;
+      padding: 4px 2px;
+    }
+    .fdt-preview {
+      background: var(--bg);
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: .9rem;
+      color: #93c5fd;
+      line-height: 1.7;
+      min-height: 2.5em;
+    }
+
     @media (max-width: 700px) {
       #clock { font-size: 3.3rem; letter-spacing: 1px; }
       .card { width: min(96vw, 640px); padding: 14px; }
@@ -386,6 +462,7 @@
     <div class="radio-group" id="mode-group">
       <label><input type="radio" name="timer-mode" value="normal" checked /> <span id="mode-normal">Standard Countdown</span></label>
       <label><input type="radio" name="timer-mode" value="kvk" /> <span id="mode-kvk">KvK Reinforcement Timer</span></label>
+      <label><input type="radio" name="timer-mode" value="fdt" /> <span id="mode-fdt">Flamedragon Tyrant</span></label>
     </div>
   </div>
 
@@ -409,6 +486,78 @@
       <div class="kvk-hint" id="kvk-help">
         Each rally uses: enemy march time + rally time left. The app tracks the rally that lands soonest.
       </div>
+    </div>
+  </div>
+
+  <!-- Flamedragon Tyrant timer -->
+  <div class="row" id="fdt-row" style="display:none">
+    <label class="row-label" id="label-fdt">Flamedragon Tyrant</label>
+    <div class="fdt-panel">
+
+      <!-- Input method selector -->
+      <div class="fdt-section">
+        <span class="fdt-section-label" id="label-fdt-input-method">Target Landing Input</span>
+        <div class="radio-group" id="fdt-input-group">
+          <label><input type="radio" name="fdt-input" value="utc" checked /> <span id="fdt-opt-utc">UTC Time</span></label>
+          <label><input type="radio" name="fdt-input" value="countdown" /> <span id="fdt-opt-countdown">Countdown</span></label>
+        </div>
+      </div>
+
+      <!-- UTC time input -->
+      <div id="fdt-utc-section" class="fdt-section">
+        <span class="fdt-section-label" id="label-fdt-utc">Target Rally Lands At (UTC)</span>
+        <div class="fdt-time-group">
+          <input type="number" id="fdt-utc-h" min="0" max="23" value="0" />
+          <span class="fdt-colon">:</span>
+          <input type="number" id="fdt-utc-m" min="0" max="59" value="0" />
+          <span class="fdt-colon">:</span>
+          <input type="number" id="fdt-utc-s" min="0" max="59" value="0" />
+          <span style="font-size:.78rem;color:var(--gray);margin-left:4px">UTC</span>
+        </div>
+      </div>
+
+      <!-- Countdown input -->
+      <div id="fdt-countdown-section" class="fdt-section" style="display:none">
+        <div class="fdt-input-row">
+          <span id="label-fdt-rally-left">Target rally time left</span>
+          <input type="number" id="fdt-rally-min" min="0" max="999" value="0" />
+          <span>m</span>
+          <input type="number" id="fdt-rally-sec" min="0" max="59" value="0" />
+          <span>s</span>
+        </div>
+        <div class="fdt-input-row">
+          <span id="label-fdt-target-march">Target enemy march time</span>
+          <input type="number" id="fdt-target-march-min" min="0" max="999" value="0" />
+          <span>m</span>
+          <input type="number" id="fdt-target-march-sec" min="0" max="59" value="0" />
+          <span>s</span>
+        </div>
+      </div>
+
+      <!-- My march time -->
+      <div class="fdt-section">
+        <div class="fdt-input-row">
+          <span id="label-fdt-my-march">My march time to target</span>
+          <input type="number" id="fdt-my-march-min" min="0" max="999" value="0" />
+          <span>m</span>
+          <input type="number" id="fdt-my-march-sec" min="0" max="59" value="0" />
+          <span>s</span>
+        </div>
+      </div>
+
+      <!-- Landing offset -->
+      <div class="fdt-section">
+        <span class="fdt-section-label" id="label-fdt-offset">Landing Offset After Target</span>
+        <div class="fdt-offset-group">
+          <input type="range" id="fdt-offset-slider" min="-120" max="120" step="1" value="5" />
+          <input type="number" id="fdt-offset-num" min="-120" max="120" value="5" />
+          <span id="fdt-offset-unit">s</span>
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div id="fdt-preview" class="fdt-preview"></div>
+
     </div>
   </div>
 
@@ -600,7 +749,25 @@ const I18N = {
     footerHtml: '<strong>Use in Discord:</strong> Set Windows playback device to <em>CABLE Input (VB-Audio Virtual Cable)</em>, then select <em>CABLE Output</em> as your Discord mic input.<br/>Get VB-Cable free at <a href="https://vb-audio.com/Cable/" target="_blank">vb-audio.com/Cable</a>',
     ttsLocal: 'Local mode: use installed English voices',
     ttsCloud: 'Cloud mode: Google TTS (English, internet required)',
-    ttsLocalUnsupported: 'Local mode is unavailable in this browser'
+    ttsLocalUnsupported: 'Local mode is unavailable in this browser',
+    modeFdt: 'Flamedragon Tyrant',
+    labelFdt: 'Flamedragon Tyrant',
+    fdtInputMethod: 'Target Landing Input',
+    fdtOptUtc: 'UTC Time',
+    fdtOptCountdown: 'Countdown',
+    fdtUtcLabel: 'Target Rally Lands At (UTC)',
+    fdtRallyLeft: 'Target rally time left',
+    fdtTargetMarch: 'Target enemy march time',
+    fdtMyMarch: 'My march time to target',
+    fdtOffsetLabel: 'Landing Offset After Target',
+    fdtOffsetUnit: 's',
+    fdtTargetLandsIn: 'Target rally lands in',
+    fdtMyLandsIn: 'Your troops land in',
+    fdtSendIn: 'Send troops in',
+    fdtSendAtUtc: 'Send at (UTC)',
+    fdtAlreadyPast: 'Send time has passed — adjust inputs',
+    fdtSendNow: 'Send your march now!',
+    fdtAlertInvalid: 'Send time has already passed or is zero. Adjust your inputs.'
   },
   zh: {
     pageTitle: 'Discord 倒计时器',
@@ -1815,6 +1982,7 @@ function applyUiLanguage() {
   document.getElementById('label-mode').textContent = tr('labelMode');
   document.getElementById('mode-normal').textContent = tr('modeNormal');
   document.getElementById('mode-kvk').textContent = tr('modeKvk');
+  document.getElementById('mode-fdt').textContent = tr('modeFdt');
   document.getElementById('label-kvk').textContent = tr('labelKvk');
   document.getElementById('label-my-march').textContent = tr('labelMyMarch');
   document.getElementById('unit-my-march-min').textContent = tr('unitShortM');
@@ -1857,6 +2025,18 @@ function applyUiLanguage() {
   }
   updateTtsNote();
   renderKvkRallies();
+  // Update FDT labels
+  document.getElementById('label-fdt').textContent = tr('labelFdt');
+  document.getElementById('label-fdt-input-method').textContent = tr('fdtInputMethod');
+  document.getElementById('fdt-opt-utc').textContent = tr('fdtOptUtc');
+  document.getElementById('fdt-opt-countdown').textContent = tr('fdtOptCountdown');
+  document.getElementById('label-fdt-utc').textContent = tr('fdtUtcLabel');
+  document.getElementById('label-fdt-rally-left').textContent = tr('fdtRallyLeft');
+  document.getElementById('label-fdt-target-march').textContent = tr('fdtTargetMarch');
+  document.getElementById('label-fdt-my-march').textContent = tr('fdtMyMarch');
+  document.getElementById('label-fdt-offset').textContent = tr('fdtOffsetLabel');
+  document.getElementById('fdt-offset-unit').textContent = tr('fdtOffsetUnit');
+  updateFdtPreview();
 }
 
 function parseMinSec(minValue, secValue) {
@@ -2195,18 +2375,102 @@ function applyKvkPlan(plan, referenceCount, preserveFlags = false) {
   );
 }
 
+// ── Flamedragon Tyrant (FDT) mode ─────────────────────────────────────────
+const FDT_OFFSET_MIN = -120;
+const FDT_OFFSET_MAX = 120;
+
+function getFdtInputMode() {
+  const checked = document.querySelector('input[name=fdt-input]:checked');
+  return checked ? checked.value : 'utc';
+}
+
+function parseClampedInt(id, min, max) {
+  return Math.min(max, Math.max(min, parseInt(document.getElementById(id).value, 10) || 0));
+}
+
+function getFdtTargetLandingSeconds() {
+  const mode = getFdtInputMode();
+  if (mode === 'utc') {
+    const h = parseClampedInt('fdt-utc-h', 0, 23);
+    const m = parseClampedInt('fdt-utc-m', 0, 59);
+    const s = parseClampedInt('fdt-utc-s', 0, 59);
+    const now = new Date();
+    let targetUtcMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), h, m, s);
+    let diffMs = targetUtcMs - Date.now();
+    // If the time is in the past, assume next day
+    if (diffMs < 0) diffMs += 86400 * 1000;
+    return Math.round(diffMs / 1000);
+  } else {
+    const rallyLeft = parseMinSec(
+      document.getElementById('fdt-rally-min').value,
+      document.getElementById('fdt-rally-sec').value
+    );
+    const targetMarch = parseMinSec(
+      document.getElementById('fdt-target-march-min').value,
+      document.getElementById('fdt-target-march-sec').value
+    );
+    return rallyLeft + targetMarch;
+  }
+}
+
+function getFdtOffset() {
+  return parseClampedInt('fdt-offset-num', FDT_OFFSET_MIN, FDT_OFFSET_MAX);
+}
+
+function getFdtPlan() {
+  const targetLandingIn = getFdtTargetLandingSeconds();
+  const myMarch = parseMinSec(
+    document.getElementById('fdt-my-march-min').value,
+    document.getElementById('fdt-my-march-sec').value
+  );
+  const offset = getFdtOffset();
+  const myLandingIn = targetLandingIn + offset;
+  const sendIn = myLandingIn - myMarch;
+  return { targetLandingIn, myLandingIn, sendIn, offset, myMarch };
+}
+
+function updateFdtPreview() {
+  const preview = document.getElementById('fdt-preview');
+  if (!preview) return;
+  if (activeMode !== 'fdt') { preview.textContent = ''; return; }
+  try {
+    const plan = getFdtPlan();
+    const lines = [];
+    lines.push(`${tr('fdtTargetLandsIn')}: <strong>${formatClock(Math.max(0, plan.targetLandingIn))}</strong>`);
+    lines.push(`${tr('fdtMyLandsIn')}: <strong>${formatClock(Math.max(0, plan.myLandingIn))}</strong>`);
+    if (plan.sendIn <= 0) {
+      lines.push(`⚠️ ${tr('fdtAlreadyPast')}`);
+    } else {
+      lines.push(`${tr('fdtSendIn')}: <strong>${formatClock(plan.sendIn)}</strong>`);
+      if (getFdtInputMode() === 'utc') {
+        const sendUtc = new Date(Date.now() + plan.sendIn * 1000);
+        const hh = String(sendUtc.getUTCHours()).padStart(2, '0');
+        const mm = String(sendUtc.getUTCMinutes()).padStart(2, '0');
+        const ss = String(sendUtc.getUTCSeconds()).padStart(2, '0');
+        lines.push(`${tr('fdtSendAtUtc')}: <strong>${hh}:${mm}:${ss}</strong>`);
+      }
+    }
+    preview.innerHTML = lines.join('<br>');
+  } catch {
+    preview.textContent = '';
+  }
+}
+
 function applyModeUi() {
   const selected = document.querySelector('input[name=timer-mode]:checked');
   activeMode = selected ? selected.value : 'normal';
   kvkTenSecondAlertPlayed = false;
   const kvkActive = activeMode === 'kvk';
+  const fdtActive = activeMode === 'fdt';
   document.getElementById('clock').style.display = kvkActive ? 'none' : 'block';
-  document.getElementById('kvk-row').style.display = activeMode === 'kvk' ? '' : 'none';
-  document.getElementById('basic-duration-row').style.display = kvkActive ? 'none' : '';
-  document.getElementById('basic-presets-row').style.display = kvkActive ? 'none' : '';
+  document.getElementById('kvk-row').style.display = kvkActive ? '' : 'none';
+  document.getElementById('fdt-row').style.display = fdtActive ? '' : 'none';
+  document.getElementById('basic-duration-row').style.display = (kvkActive || fdtActive) ? 'none' : '';
+  document.getElementById('basic-presets-row').style.display = (kvkActive || fdtActive) ? 'none' : '';
   document.getElementById('announce-row').style.display = kvkActive ? 'none' : '';
   document.getElementById('final-row').style.display = kvkActive ? 'none' : '';
   document.getElementById('flash-row').style.display = kvkActive ? 'none' : '';
+  if (fdtActive) updateFdtPreview();
 }
 
 function clearKvkQueue() {
@@ -2321,12 +2585,40 @@ document.getElementById('btn-add-rally').addEventListener('click', () => addKvkR
 document.getElementById('btn-clear-queue').addEventListener('click', clearKvkQueue);
 document.getElementById('my-march-min').addEventListener('input', updateKvkRallyInfoText);
 document.getElementById('my-march-sec').addEventListener('input', updateKvkRallyInfoText);
+
+// ── FDT event listeners ────────────────────────────────────────────────────
+document.querySelectorAll('input[name=fdt-input]').forEach(el => {
+  el.addEventListener('change', () => {
+    const mode = document.querySelector('input[name=fdt-input]:checked').value;
+    document.getElementById('fdt-utc-section').style.display = mode === 'utc' ? '' : 'none';
+    document.getElementById('fdt-countdown-section').style.display = mode === 'countdown' ? '' : 'none';
+    updateFdtPreview();
+  });
+});
+document.getElementById('fdt-offset-slider').addEventListener('input', () => {
+  document.getElementById('fdt-offset-num').value = document.getElementById('fdt-offset-slider').value;
+  updateFdtPreview();
+});
+document.getElementById('fdt-offset-num').addEventListener('input', () => {
+  const v = Math.min(FDT_OFFSET_MAX, Math.max(FDT_OFFSET_MIN, parseInt(document.getElementById('fdt-offset-num').value, 10) || 0));
+  document.getElementById('fdt-offset-slider').value = v;
+  updateFdtPreview();
+});
+['fdt-utc-h','fdt-utc-m','fdt-utc-s',
+ 'fdt-rally-min','fdt-rally-sec',
+ 'fdt-target-march-min','fdt-target-march-sec',
+ 'fdt-my-march-min','fdt-my-march-sec'
+].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateFdtPreview);
+  document.getElementById(id).addEventListener('change', updateFdtPreview);
+});
 normalizeDurationInputs();
 if (kvkRallies.length === 0) addKvkRally();
 applyModeUi();
 applyUiLanguage();
 setInterval(() => {
   if (activeMode === 'kvk' && hasStartedKvkRally()) updateKvkRallyInfoText();
+  if (activeMode === 'fdt' && !running) updateFdtPreview();
 }, 1000);
 
 // ── Countdown engine ───────────────────────────────────────────────────────
@@ -2415,6 +2707,8 @@ async function countdown() {
         }
       }
       finalSpeech = finalSpeeches.length > 0 ? finalSpeeches.join('. ') : tr('kvkSendNow');
+    } else if (activeMode === 'fdt') {
+      finalSpeech = tr('fdtSendNow');
     } else {
       finalSpeech = completionSpeechText();
     }
@@ -2436,6 +2730,13 @@ async function startTimerFromCurrentMode() {
     if (!plan) { alert(tr('kvkAlertNoRallies')); return; }
     dur = plan.totalDuration;
     applyKvkPlan(plan, plan.totalDuration, false);
+  } else if (activeMode === 'fdt') {
+    const plan = getFdtPlan();
+    if (plan.sendIn <= 0) {
+      alert(tr('fdtAlertInvalid'));
+      return;
+    }
+    dur = Math.round(plan.sendIn);
   } else if (dur <= 0) {
     alert(tr('alertDurationInvalid'));
     return;
@@ -2464,6 +2765,7 @@ async function startTimerFromCurrentMode() {
   kvkTenSecondAlertPlayed = false;
   btnStop .disabled = false;
   if (activeMode === 'normal') setStatusKey('statusRunning');
+  if (activeMode === 'fdt') setStatusKey('statusRunning');
   if (activeMode === 'kvk') {
     const soonest = kvkRallyPlans.find(r => r.isSoonest);
     if (soonest && soonest.sendIn > 0) {
@@ -2482,7 +2784,11 @@ async function startTimerFromCurrentMode() {
     });
   } else {
     loadClip(speechTextForCount(dur)).catch(() => {});
-    loadClip(completionSpeechText()).catch(() => {});
+    if (activeMode === 'fdt') {
+      loadClip(tr('fdtSendNow')).catch(() => {});
+    } else {
+      loadClip(completionSpeechText()).catch(() => {});
+    }
   }
   countdown();
 }
